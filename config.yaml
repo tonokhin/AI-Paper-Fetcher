@@ -1,0 +1,37 @@
+topics:
+  llm_evaluation:
+    query: "LLM evaluation"
+    include_keywords:
+      - benchmark
+      - evaluation
+      - reasoning
+    exclude_keywords:
+      - survey
+    categories:
+      - cs.CL
+      - cs.AI
+      - cs.LG
+
+  ai_agents:
+    query: "AI agents"
+    include_keywords:
+      - agent
+      - tool use
+      - planning
+    exclude_keywords: []
+    categories:
+      - cs.AI
+      - cs.LG
+
+  interpretability:
+    query: "AI interpretability"
+    include_keywords:
+      - interpretability
+      - explanation
+      - mechanistic
+    exclude_keywords:
+      - survey
+    categories:
+      - cs.AI
+      - cs.LG
+      - cs.CL

@@ -7,7 +7,9 @@ from pathlib import Path
 from urllib.error import URLError
 
 from .arxiv_client import search_papers
+from .config import TopicConfig, load_topics
 from .downloader import download_pdf, mark_downloaded
+from .filtering import filter_papers
 from .models import Paper
 from .storage import (
     append_papers,
@@ -26,25 +28,28 @@ class FetchSummary:
     failed_downloads: int = 0
     saved: int = 0
 
+    def add(self, other: "FetchSummary") -> None:
+        self.found += other.found
+        self.downloaded += other.downloaded
+        self.skipped_duplicates += other.skipped_duplicates
+        self.failed_downloads += other.failed_downloads
+        self.saved += other.saved
+
 
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
 
     if args.command in (None, "fetch"):
-        if not args.topic:
-            parser.error("--topic is required for fetch")
         try:
-            summary = fetch(
-                topic=args.topic,
-                max_results=args.max_results,
-                data_dir=Path(args.data_dir),
-                papers_dir=Path(args.papers_dir),
-                no_download=args.no_download,
-            )
+            summary = run_fetch(args, parser)
+        except (FileNotFoundError, ValueError) as error:
+            print(f"Configuration error: {error}", file=sys.stderr)
+            return 1
         except URLError as error:
             print(f"Could not reach arXiv: {error}", file=sys.stderr)
             return 1
+
         print_summary(summary, Path(args.data_dir) / "reading_list.csv")
         return 0
 
@@ -58,8 +63,12 @@ def build_parser() -> argparse.ArgumentParser:
         description="Find, download, and organize AI research papers from arXiv.",
     )
     parser.add_argument("command", nargs="?", choices=["fetch"], help="Command to run.")
-    parser.add_argument("--topic", help="Topic or keyword query to search on arXiv.")
+    source = parser.add_mutually_exclusive_group()
+    source.add_argument("--topic", help="Topic or keyword query to search on arXiv.")
+    source.add_argument("--config-topic", help="Named topic from config.yaml.")
+    source.add_argument("--all", action="store_true", dest="fetch_all", help="Fetch all configured topics.")
     parser.add_argument("--max-results", type=int, default=10, help="Maximum arXiv results.")
+    parser.add_argument("--config", default="config.yaml", help="Path to topic config YAML.")
     parser.add_argument("--data-dir", default="data", help="Directory for CSV/JSON data.")
     parser.add_argument("--papers-dir", default="papers", help="Directory for downloaded PDFs.")
     parser.add_argument(
@@ -70,12 +79,83 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def fetch(
-    topic: str,
+def run_fetch(args: argparse.Namespace, parser: argparse.ArgumentParser) -> FetchSummary:
+    data_dir = Path(args.data_dir)
+    papers_dir = Path(args.papers_dir)
+
+    if args.topic:
+        return fetch(
+            topic=args.topic,
+            query=args.topic,
+            max_results=args.max_results,
+            data_dir=data_dir,
+            papers_dir=papers_dir,
+            no_download=args.no_download,
+        )
+
+    if args.config_topic:
+        topics = load_topics(Path(args.config))
+        if args.config_topic not in topics:
+            parser.error(f"Unknown config topic: {args.config_topic}")
+        return fetch_config_topic(
+            topics[args.config_topic],
+            max_results=args.max_results,
+            data_dir=data_dir,
+            papers_dir=papers_dir,
+            no_download=args.no_download,
+        )
+
+    if args.fetch_all:
+        topics = load_topics(Path(args.config))
+        summary = FetchSummary()
+        for topic_config in topics.values():
+            summary.add(
+                fetch_config_topic(
+                    topic_config,
+                    max_results=args.max_results,
+                    data_dir=data_dir,
+                    papers_dir=papers_dir,
+                    no_download=args.no_download,
+                )
+            )
+        return summary
+
+    parser.error("--topic, --config-topic, or --all is required for fetch")
+    raise AssertionError("parser.error should exit")
+
+
+def fetch_config_topic(
+    topic_config: TopicConfig,
     max_results: int,
     data_dir: Path,
     papers_dir: Path,
     no_download: bool = False,
+) -> FetchSummary:
+    return fetch(
+        topic=topic_config.name,
+        query=topic_config.query,
+        max_results=max_results,
+        data_dir=data_dir,
+        papers_dir=papers_dir,
+        no_download=no_download,
+        include_keywords=topic_config.include_keywords,
+        exclude_keywords=topic_config.exclude_keywords,
+        categories=topic_config.categories,
+        published_after=topic_config.published_after,
+    )
+
+
+def fetch(
+    topic: str,
+    query: str,
+    max_results: int,
+    data_dir: Path,
+    papers_dir: Path,
+    no_download: bool = False,
+    include_keywords: list[str] | None = None,
+    exclude_keywords: list[str] | None = None,
+    categories: list[str] | None = None,
+    published_after: str | None = None,
 ) -> FetchSummary:
     ensure_project_dirs(data_dir, papers_dir)
     reading_list_path = data_dir / "reading_list.csv"
@@ -85,7 +165,18 @@ def fetch(
     existing_ids = load_existing_ids(reading_list_path)
     known_ids = seen | existing_ids
 
-    papers = search_papers(topic=topic, max_results=max_results)
+    papers = search_papers(
+        query=query,
+        max_results=max_results,
+        topic=topic,
+        categories=categories,
+    )
+    papers = filter_papers(
+        papers,
+        include_keywords=include_keywords,
+        exclude_keywords=exclude_keywords,
+        published_after=published_after,
+    )
     summary = FetchSummary(found=len(papers))
     new_papers: list[Paper] = []
 

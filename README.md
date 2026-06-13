@@ -14,9 +14,32 @@ If you are running from the repository root before installing the package, use:
 PYTHONPATH=src python -m ai_paper_fetcher fetch --topic "LLM evaluation" --max-results 10
 ```
 
-## Version 1 Features
+## Configured Topics
+
+Define repeatable research tracks in `config.yaml`, then fetch one topic:
+
+```bash
+PYTHONPATH=src python -m ai_paper_fetcher fetch --config-topic llm_evaluation --max-results 10
+```
+
+Fetch every configured topic:
+
+```bash
+PYTHONPATH=src python -m ai_paper_fetcher fetch --all --max-results 10
+```
+
+Use `--no-download` to save metadata without downloading PDFs:
+
+```bash
+PYTHONPATH=src python -m ai_paper_fetcher fetch --all --max-results 10 --no-download
+```
+
+## Features
 
 - Search arXiv by topic or keyword
+- Search configured topics from `config.yaml`
+- Restrict configured topics by arXiv categories
+- Filter by include and exclude keywords
 - Download PDFs into topic-specific folders
 - Save metadata to `data/reading_list.csv`
 - Track seen papers in `data/seen_papers.json`
@@ -30,4 +53,3 @@ Downloaded 8 new PDFs
 Skipped 2 duplicates
 Saved metadata to data/reading_list.csv
 ```
-

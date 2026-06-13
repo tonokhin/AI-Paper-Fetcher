@@ -1,6 +1,6 @@
 import unittest
 
-from ai_paper_fetcher.arxiv_client import extract_arxiv_id, parse_arxiv_feed
+from ai_paper_fetcher.arxiv_client import build_search_query, extract_arxiv_id, parse_arxiv_feed
 
 
 SAMPLE_FEED = b"""<?xml version="1.0" encoding="UTF-8"?>
@@ -33,6 +33,11 @@ class ArxivClientTests(unittest.TestCase):
         self.assertEqual(papers[0].authors, "Ada Lovelace, Alan Turing")
         self.assertEqual(papers[0].categories, "cs.CL")
         self.assertEqual(papers[0].pdf_url, "https://arxiv.org/pdf/2401.12345")
+
+    def test_build_search_query_with_categories(self):
+        query = build_search_query("LLM evaluation", ["cs.CL", "cs.AI"])
+
+        self.assertEqual(query, 'all:"LLM evaluation" AND (cat:cs.CL OR cat:cs.AI)')
 
 
 if __name__ == "__main__":

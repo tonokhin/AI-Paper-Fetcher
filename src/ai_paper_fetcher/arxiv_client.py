@@ -20,11 +20,16 @@ def extract_arxiv_id(entry_id: str) -> str:
     return raw_id.split("v")[0] if "v" in raw_id else raw_id
 
 
-def search_papers(topic: str, max_results: int = 10) -> list[Paper]:
-    query = f'all:"{topic}"'
+def search_papers(
+    query: str,
+    max_results: int = 10,
+    topic: str | None = None,
+    categories: list[str] | None = None,
+) -> list[Paper]:
+    search_query = build_search_query(query, categories or [])
     params = urlencode(
         {
-            "search_query": query,
+            "search_query": search_query,
             "start": 0,
             "max_results": max_results,
             "sortBy": "submittedDate",
@@ -37,7 +42,17 @@ def search_papers(topic: str, max_results: int = 10) -> list[Paper]:
     with urlopen(request, timeout=30, context=ssl_context()) as response:
         payload = response.read()
 
-    return parse_arxiv_feed(payload, topic)
+    return parse_arxiv_feed(payload, topic or query)
+
+
+def build_search_query(query: str, categories: list[str] | None = None) -> str:
+    base_query = f'all:"{query}"'
+    categories = categories or []
+    if not categories:
+        return base_query
+
+    category_query = " OR ".join(f"cat:{category}" for category in categories)
+    return f"{base_query} AND ({category_query})"
 
 
 def parse_arxiv_feed(payload: bytes, topic: str) -> list[Paper]:
