@@ -47,6 +47,18 @@ PYTHONPATH=src python -m ai_paper_fetcher citations
 PYTHONPATH=src python -m ai_paper_fetcher citations --refresh-citations
 ```
 
+Rank the saved reading list by relevance:
+
+```bash
+PYTHONPATH=src python -m ai_paper_fetcher rank
+```
+
+Fetch ranks automatically by default. To skip that step:
+
+```bash
+PYTHONPATH=src python -m ai_paper_fetcher fetch --all --max-results 10 --no-rank
+```
+
 ## Features
 
 - Search arXiv by topic or keyword
@@ -54,6 +66,7 @@ PYTHONPATH=src python -m ai_paper_fetcher citations --refresh-citations
 - Restrict configured topics by arXiv categories
 - Filter by include and exclude keywords
 - Add citation counts from OpenAlex when available
+- Rank papers by relevance, recency, citations, and configured keywords
 - Download PDFs into topic-specific folders
 - Save metadata to `data/reading_list.csv`
 - Track seen papers in `data/seen_papers.json`

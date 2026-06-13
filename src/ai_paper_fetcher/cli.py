@@ -12,6 +12,7 @@ from .config import TopicConfig, load_topics
 from .downloader import download_pdf, mark_downloaded
 from .filtering import filter_papers
 from .models import Paper
+from .ranking import rank_papers
 from .storage import (
     append_papers,
     ensure_project_dirs,
@@ -31,6 +32,7 @@ class FetchSummary:
     failed_downloads: int = 0
     citation_matches: int = 0
     saved: int = 0
+    ranked: int = 0
 
     def add(self, other: "FetchSummary") -> None:
         self.found += other.found
@@ -39,11 +41,26 @@ class FetchSummary:
         self.failed_downloads += other.failed_downloads
         self.citation_matches += other.citation_matches
         self.saved += other.saved
+        self.ranked += other.ranked
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
+
+    if args.command == "rank":
+        try:
+            count = rank_existing_reading_list(
+                Path(args.data_dir) / "reading_list.csv",
+                Path(args.config),
+            )
+        except (FileNotFoundError, ValueError) as error:
+            print(f"Ranking error: {error}", file=sys.stderr)
+            return 1
+
+        print(f"Ranked {count} papers")
+        print(f"Saved ranked reading list to {(Path(args.data_dir) / 'reading_list.csv').as_posix()}")
+        return 0
 
     if args.command == "citations":
         try:
@@ -81,7 +98,7 @@ def build_parser() -> argparse.ArgumentParser:
         prog="ai-paper-fetcher",
         description="Find, download, and organize AI research papers from arXiv.",
     )
-    parser.add_argument("command", nargs="?", choices=["fetch", "citations"], help="Command to run.")
+    parser.add_argument("command", nargs="?", choices=["fetch", "citations", "rank"], help="Command to run.")
     source = parser.add_mutually_exclusive_group()
     source.add_argument("--topic", help="Topic or keyword query to search on arXiv.")
     source.add_argument("--config-topic", help="Named topic from config.yaml.")
@@ -105,6 +122,11 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Refresh citation metadata even when a paper already has a citation count.",
     )
+    parser.add_argument(
+        "--no-rank",
+        action="store_true",
+        help="Skip automatic ranking after fetch.",
+    )
     return parser
 
 
@@ -120,6 +142,17 @@ def enrich_existing_reading_list(csv_path: Path, refresh: bool = False) -> int:
     return updated
 
 
+def rank_existing_reading_list(csv_path: Path, config_path: Path) -> int:
+    papers = load_papers(csv_path)
+    if not papers:
+        return 0
+
+    topics = load_topics(config_path) if config_path.exists() else {}
+    ranked = rank_papers(papers, topics)
+    write_papers(csv_path, ranked)
+    return len(ranked)
+
+
 def run_fetch(args: argparse.Namespace, parser: argparse.ArgumentParser) -> FetchSummary:
     data_dir = Path(args.data_dir)
     papers_dir = Path(args.papers_dir)
@@ -133,6 +166,8 @@ def run_fetch(args: argparse.Namespace, parser: argparse.ArgumentParser) -> Fetc
             papers_dir=papers_dir,
             no_download=args.no_download,
             enrich_with_citations=not args.no_citations,
+            auto_rank=not args.no_rank,
+            config_path=Path(args.config),
         )
 
     if args.config_topic:
@@ -146,6 +181,8 @@ def run_fetch(args: argparse.Namespace, parser: argparse.ArgumentParser) -> Fetc
             papers_dir=papers_dir,
             no_download=args.no_download,
             enrich_with_citations=not args.no_citations,
+            auto_rank=not args.no_rank,
+            config_path=Path(args.config),
         )
 
     if args.fetch_all:
@@ -160,8 +197,12 @@ def run_fetch(args: argparse.Namespace, parser: argparse.ArgumentParser) -> Fetc
                     papers_dir=papers_dir,
                     no_download=args.no_download,
                     enrich_with_citations=not args.no_citations,
+                    auto_rank=False,
+                    config_path=Path(args.config),
                 )
             )
+        if not args.no_rank:
+            summary.ranked = rank_existing_reading_list(data_dir / "reading_list.csv", Path(args.config))
         return summary
 
     parser.error("--topic, --config-topic, or --all is required for fetch")
@@ -175,6 +216,8 @@ def fetch_config_topic(
     papers_dir: Path,
     no_download: bool = False,
     enrich_with_citations: bool = True,
+    auto_rank: bool = True,
+    config_path: Path | None = None,
 ) -> FetchSummary:
     return fetch(
         topic=topic_config.name,
@@ -184,6 +227,8 @@ def fetch_config_topic(
         papers_dir=papers_dir,
         no_download=no_download,
         enrich_with_citations=enrich_with_citations,
+        auto_rank=auto_rank,
+        config_path=config_path,
         include_keywords=topic_config.include_keywords,
         exclude_keywords=topic_config.exclude_keywords,
         categories=topic_config.categories,
@@ -199,6 +244,8 @@ def fetch(
     papers_dir: Path,
     no_download: bool = False,
     enrich_with_citations: bool = True,
+    auto_rank: bool = True,
+    config_path: Path | None = None,
     include_keywords: list[str] | None = None,
     exclude_keywords: list[str] | None = None,
     categories: list[str] | None = None,
@@ -256,6 +303,8 @@ def fetch(
     append_papers(reading_list_path, new_papers)
     save_seen(seen_path, seen)
     summary.saved = len(new_papers)
+    if auto_rank:
+        summary.ranked = rank_existing_reading_list(reading_list_path, config_path or Path("config.yaml"))
     return summary
 
 
@@ -266,4 +315,6 @@ def print_summary(summary: FetchSummary, reading_list_path: Path) -> None:
     if summary.failed_downloads:
         print(f"Failed to download {summary.failed_downloads} PDFs")
     print(f"Matched citation metadata for {summary.citation_matches} papers")
+    if summary.ranked:
+        print(f"Ranked {summary.ranked} papers")
     print(f"Saved {summary.saved} metadata records to {reading_list_path.as_posix()}")
