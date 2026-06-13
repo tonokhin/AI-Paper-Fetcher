@@ -34,12 +34,26 @@ Use `--no-download` to save metadata without downloading PDFs:
 PYTHONPATH=src python -m ai_paper_fetcher fetch --all --max-results 10 --no-download
 ```
 
+Citation counts are enriched from OpenAlex by default when a match is found. To skip that network step:
+
+```bash
+PYTHONPATH=src python -m ai_paper_fetcher fetch --all --max-results 10 --no-citations
+```
+
+To add or refresh citation counts for an existing reading list:
+
+```bash
+PYTHONPATH=src python -m ai_paper_fetcher citations
+PYTHONPATH=src python -m ai_paper_fetcher citations --refresh-citations
+```
+
 ## Features
 
 - Search arXiv by topic or keyword
 - Search configured topics from `config.yaml`
 - Restrict configured topics by arXiv categories
 - Filter by include and exclude keywords
+- Add citation counts from OpenAlex when available
 - Download PDFs into topic-specific folders
 - Save metadata to `data/reading_list.csv`
 - Track seen papers in `data/seen_papers.json`

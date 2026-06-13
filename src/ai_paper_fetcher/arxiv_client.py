@@ -73,6 +73,7 @@ def parse_arxiv_feed(payload: bytes, topic: str) -> list[Paper]:
             if category.attrib.get("term")
         )
         pdf_url = _pdf_url(entry)
+        doi = clean_whitespace(_text(entry, f"{ARXIV}doi"))
 
         papers.append(
             Paper(
@@ -85,6 +86,7 @@ def parse_arxiv_feed(payload: bytes, topic: str) -> list[Paper]:
                 categories=categories,
                 topic=topic,
                 pdf_url=pdf_url,
+                doi=doi,
             )
         )
 

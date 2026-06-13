@@ -7,6 +7,7 @@ from pathlib import Path
 from urllib.error import URLError
 
 from .arxiv_client import search_papers
+from .citations import enrich_citations
 from .config import TopicConfig, load_topics
 from .downloader import download_pdf, mark_downloaded
 from .filtering import filter_papers
@@ -15,8 +16,10 @@ from .storage import (
     append_papers,
     ensure_project_dirs,
     load_existing_ids,
+    load_papers,
     load_seen,
     save_seen,
+    write_papers,
 )
 
 
@@ -26,6 +29,7 @@ class FetchSummary:
     downloaded: int = 0
     skipped_duplicates: int = 0
     failed_downloads: int = 0
+    citation_matches: int = 0
     saved: int = 0
 
     def add(self, other: "FetchSummary") -> None:
@@ -33,12 +37,27 @@ class FetchSummary:
         self.downloaded += other.downloaded
         self.skipped_duplicates += other.skipped_duplicates
         self.failed_downloads += other.failed_downloads
+        self.citation_matches += other.citation_matches
         self.saved += other.saved
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
+
+    if args.command == "citations":
+        try:
+            updated = enrich_existing_reading_list(
+                Path(args.data_dir) / "reading_list.csv",
+                refresh=args.refresh_citations,
+            )
+        except URLError as error:
+            print(f"Could not reach OpenAlex: {error}", file=sys.stderr)
+            return 1
+
+        print(f"Updated citation metadata for {updated} papers")
+        print(f"Saved metadata to {(Path(args.data_dir) / 'reading_list.csv').as_posix()}")
+        return 0
 
     if args.command in (None, "fetch"):
         try:
@@ -62,7 +81,7 @@ def build_parser() -> argparse.ArgumentParser:
         prog="ai-paper-fetcher",
         description="Find, download, and organize AI research papers from arXiv.",
     )
-    parser.add_argument("command", nargs="?", choices=["fetch"], help="Command to run.")
+    parser.add_argument("command", nargs="?", choices=["fetch", "citations"], help="Command to run.")
     source = parser.add_mutually_exclusive_group()
     source.add_argument("--topic", help="Topic or keyword query to search on arXiv.")
     source.add_argument("--config-topic", help="Named topic from config.yaml.")
@@ -76,7 +95,29 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Save metadata without downloading PDFs.",
     )
+    parser.add_argument(
+        "--no-citations",
+        action="store_true",
+        help="Skip OpenAlex citation enrichment.",
+    )
+    parser.add_argument(
+        "--refresh-citations",
+        action="store_true",
+        help="Refresh citation metadata even when a paper already has a citation count.",
+    )
     return parser
+
+
+def enrich_existing_reading_list(csv_path: Path, refresh: bool = False) -> int:
+    papers = load_papers(csv_path)
+    targets = [
+        paper
+        for paper in papers
+        if refresh or not paper.citation_count
+    ]
+    updated = enrich_citations(targets)
+    write_papers(csv_path, papers)
+    return updated
 
 
 def run_fetch(args: argparse.Namespace, parser: argparse.ArgumentParser) -> FetchSummary:
@@ -91,6 +132,7 @@ def run_fetch(args: argparse.Namespace, parser: argparse.ArgumentParser) -> Fetc
             data_dir=data_dir,
             papers_dir=papers_dir,
             no_download=args.no_download,
+            enrich_with_citations=not args.no_citations,
         )
 
     if args.config_topic:
@@ -103,6 +145,7 @@ def run_fetch(args: argparse.Namespace, parser: argparse.ArgumentParser) -> Fetc
             data_dir=data_dir,
             papers_dir=papers_dir,
             no_download=args.no_download,
+            enrich_with_citations=not args.no_citations,
         )
 
     if args.fetch_all:
@@ -116,6 +159,7 @@ def run_fetch(args: argparse.Namespace, parser: argparse.ArgumentParser) -> Fetc
                     data_dir=data_dir,
                     papers_dir=papers_dir,
                     no_download=args.no_download,
+                    enrich_with_citations=not args.no_citations,
                 )
             )
         return summary
@@ -130,6 +174,7 @@ def fetch_config_topic(
     data_dir: Path,
     papers_dir: Path,
     no_download: bool = False,
+    enrich_with_citations: bool = True,
 ) -> FetchSummary:
     return fetch(
         topic=topic_config.name,
@@ -138,6 +183,7 @@ def fetch_config_topic(
         data_dir=data_dir,
         papers_dir=papers_dir,
         no_download=no_download,
+        enrich_with_citations=enrich_with_citations,
         include_keywords=topic_config.include_keywords,
         exclude_keywords=topic_config.exclude_keywords,
         categories=topic_config.categories,
@@ -152,6 +198,7 @@ def fetch(
     data_dir: Path,
     papers_dir: Path,
     no_download: bool = False,
+    enrich_with_citations: bool = True,
     include_keywords: list[str] | None = None,
     exclude_keywords: list[str] | None = None,
     categories: list[str] | None = None,
@@ -185,6 +232,9 @@ def fetch(
             summary.skipped_duplicates += 1
             continue
 
+        if enrich_with_citations:
+            summary.citation_matches += enrich_citations([paper])
+
         if no_download:
             new_papers.append(paper)
             known_ids.add(paper.paper_id)
@@ -215,4 +265,5 @@ def print_summary(summary: FetchSummary, reading_list_path: Path) -> None:
     print(f"Skipped {summary.skipped_duplicates} duplicates")
     if summary.failed_downloads:
         print(f"Failed to download {summary.failed_downloads} PDFs")
+    print(f"Matched citation metadata for {summary.citation_matches} papers")
     print(f"Saved {summary.saved} metadata records to {reading_list_path.as_posix()}")

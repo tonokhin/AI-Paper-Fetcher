@@ -14,6 +14,7 @@ SAMPLE_FEED = b"""<?xml version="1.0" encoding="UTF-8"?>
     <author><name>Ada Lovelace</name></author>
     <author><name>Alan Turing</name></author>
     <category term="cs.CL" />
+    <arxiv:doi xmlns:arxiv="http://arxiv.org/schemas/atom">10.1234/example</arxiv:doi>
     <link title="pdf" href="https://arxiv.org/pdf/2401.12345" />
   </entry>
 </feed>
@@ -33,6 +34,7 @@ class ArxivClientTests(unittest.TestCase):
         self.assertEqual(papers[0].authors, "Ada Lovelace, Alan Turing")
         self.assertEqual(papers[0].categories, "cs.CL")
         self.assertEqual(papers[0].pdf_url, "https://arxiv.org/pdf/2401.12345")
+        self.assertEqual(papers[0].doi, "10.1234/example")
 
     def test_build_search_query_with_categories(self):
         query = build_search_query("LLM evaluation", ["cs.CL", "cs.AI"])

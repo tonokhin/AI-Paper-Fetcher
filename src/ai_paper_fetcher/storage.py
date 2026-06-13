@@ -44,6 +44,7 @@ def append_papers(csv_path: Path, papers: list[Paper]) -> None:
         return
 
     csv_path.parent.mkdir(parents=True, exist_ok=True)
+    ensure_csv_schema(csv_path)
     file_exists = csv_path.exists()
 
     with csv_path.open("a", encoding="utf-8", newline="") as handle:
@@ -52,3 +53,41 @@ def append_papers(csv_path: Path, papers: list[Paper]) -> None:
             writer.writeheader()
         for paper in papers:
             writer.writerow(paper.to_row())
+
+
+def load_papers(csv_path: Path) -> list[Paper]:
+    if not csv_path.exists():
+        return []
+
+    ensure_csv_schema(csv_path)
+    with csv_path.open("r", encoding="utf-8", newline="") as handle:
+        reader = csv.DictReader(handle)
+        return [Paper.from_row(row) for row in reader]
+
+
+def write_papers(csv_path: Path, papers: list[Paper]) -> None:
+    csv_path.parent.mkdir(parents=True, exist_ok=True)
+    with csv_path.open("w", encoding="utf-8", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=FIELDNAMES)
+        writer.writeheader()
+        for paper in papers:
+            writer.writerow(paper.to_row())
+
+
+def ensure_csv_schema(csv_path: Path) -> None:
+    if not csv_path.exists():
+        return
+
+    with csv_path.open("r", encoding="utf-8", newline="") as handle:
+        reader = csv.DictReader(handle)
+        existing_fieldnames = reader.fieldnames or []
+        rows = list(reader)
+
+    if existing_fieldnames == FIELDNAMES:
+        return
+
+    with csv_path.open("w", encoding="utf-8", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=FIELDNAMES)
+        writer.writeheader()
+        for row in rows:
+            writer.writerow({field: row.get(field, "") for field in FIELDNAMES})
