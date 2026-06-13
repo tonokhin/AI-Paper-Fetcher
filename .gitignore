@@ -1,0 +1,12 @@
+.venv/
+__pycache__/
+*.py[cod]
+
+data/*.csv
+data/*.json
+papers/
+weekly_reports/*.md
+
+plans/
+
+.DS_Store
