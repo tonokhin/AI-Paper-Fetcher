@@ -31,6 +31,3 @@ Skipped 2 duplicates
 Saved metadata to data/reading_list.csv
 ```
 
-## Project Plan
-
-See [PROJECT_EXECUTION_PLAN.md](PROJECT_EXECUTION_PLAN.md) for milestones and the full roadmap.
