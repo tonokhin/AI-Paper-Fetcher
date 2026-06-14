@@ -7,9 +7,9 @@ from dataclasses import dataclass
 from pathlib import Path
 from urllib.error import URLError
 
-from .arxiv_client import search_papers
+from .arxiv_client import fetch_paper_by_id, search_papers
 from .citations import enrich_citations
-from .config import TopicConfig, load_topics
+from .config import FoundationalPaperConfig, TopicConfig, load_foundational_papers, load_topics
 from .downloader import download_pdf, mark_downloaded
 from .filtering import filter_papers
 from .models import Paper
@@ -60,6 +60,19 @@ class FetchSummary:
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
+
+    if args.command == "foundations":
+        try:
+            summary = run_foundations(args)
+        except (FileNotFoundError, ValueError) as error:
+            print(f"Foundations error: {error}", file=sys.stderr)
+            return 1
+        except URLError as error:
+            print(f"Could not reach arXiv or OpenAlex: {error}", file=sys.stderr)
+            return 1
+
+        print_summary(summary, Path(args.data_dir) / "reading_list.csv")
+        return 0
 
     if args.command == "weekly":
         try:
@@ -137,7 +150,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "command",
         nargs="?",
-        choices=["fetch", "citations", "rank", "report", "weekly"],
+        choices=["fetch", "citations", "rank", "report", "weekly", "foundations"],
         help="Command to run.",
     )
     source = parser.add_mutually_exclusive_group()
@@ -157,6 +170,11 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--max-pages", type=int, default=5, help="Maximum arXiv pages to inspect with --new-results.")
     parser.add_argument("--config", default="config.yaml", help="Path to topic config YAML.")
+    parser.add_argument(
+        "--foundations-config",
+        default="foundational_papers.yaml",
+        help="Path to foundational papers YAML.",
+    )
     parser.add_argument("--data-dir", default="data", help="Directory for CSV/JSON data.")
     parser.add_argument("--papers-dir", default="papers", help="Directory for downloaded PDFs.")
     parser.add_argument(
@@ -204,6 +222,74 @@ class WeeklyResult:
     report_count: int
     reading_list_report_path: Path
     weekly_report_path: Path
+
+
+def run_foundations(args: argparse.Namespace) -> FetchSummary:
+    progress = Progress(args.quiet)
+    data_dir = Path(args.data_dir)
+    papers_dir = Path(args.papers_dir)
+    ensure_project_dirs(data_dir, papers_dir)
+
+    reading_list_path = data_dir / "reading_list.csv"
+    seen_path = data_dir / "seen_papers.json"
+    seen = load_seen(seen_path)
+    known_ids = seen | load_existing_ids(reading_list_path)
+    foundation_configs = load_foundational_papers(Path(args.foundations_config))
+    summary = FetchSummary()
+    new_papers: list[Paper] = []
+
+    for foundation in foundation_configs:
+        progress.log(f"Fetching foundational paper: {foundation.title}")
+        paper = fetch_foundational_paper(foundation)
+        summary.found += 1
+
+        if paper is None:
+            summary.failed_downloads += 1
+            progress.log(f"Could not find arXiv metadata for {foundation.arxiv_id}")
+            continue
+
+        if paper.paper_id in known_ids:
+            summary.skipped_duplicates += 1
+            progress.log(f"Skipping duplicate: {paper.title}")
+            continue
+
+        if not args.no_citations:
+            progress.log(f"Looking up citations: {paper.title}")
+            summary.citation_matches += enrich_citations([paper])
+
+        if args.no_download:
+            progress.log(f"Saving metadata: {paper.title}")
+        else:
+            try:
+                progress.log(f"Downloading PDF: {paper.title}")
+                path = download_pdf(paper, papers_dir)
+                mark_downloaded(paper, path)
+                summary.downloaded += 1
+            except (OSError, URLError, ValueError) as error:
+                summary.failed_downloads += 1
+                paper.reason_to_read = f"PDF download failed: {error}"
+
+        new_papers.append(paper)
+        known_ids.add(paper.paper_id)
+        seen.add(paper.paper_id)
+
+    append_papers(reading_list_path, new_papers)
+    save_seen(seen_path, seen)
+    summary.saved = len(new_papers)
+    if not args.no_rank:
+        progress.log("Ranking reading list...")
+        summary.ranked = rank_existing_reading_list(reading_list_path, Path(args.config))
+    return summary
+
+
+def fetch_foundational_paper(config: FoundationalPaperConfig) -> Paper | None:
+    paper = fetch_paper_by_id(config.arxiv_id, config.topic)
+    if paper is None:
+        return None
+    paper.collection = "foundational"
+    if config.note:
+        paper.reason_to_read = f"Foundational paper: {config.note}"
+    return paper
 
 
 def enrich_existing_reading_list(csv_path: Path, refresh: bool = False) -> int:

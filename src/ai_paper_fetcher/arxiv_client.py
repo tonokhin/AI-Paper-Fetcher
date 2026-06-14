@@ -46,6 +46,18 @@ def search_papers(
     return parse_arxiv_feed(payload, topic or query)
 
 
+def fetch_paper_by_id(arxiv_id: str, topic: str) -> Paper | None:
+    params = urlencode({"id_list": arxiv_id})
+    url = f"{ARXIV_API_URL}?{params}"
+    request = Request(url, headers={"User-Agent": "ai-paper-fetcher/0.1"})
+
+    with urlopen(request, timeout=30, context=ssl_context()) as response:
+        payload = response.read()
+
+    papers = parse_arxiv_feed(payload, topic)
+    return papers[0] if papers else None
+
+
 def build_search_query(query: str, categories: list[str] | None = None) -> str:
     base_query = f'all:"{query}"'
     categories = categories or []

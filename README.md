@@ -101,10 +101,23 @@ Progress is printed while the tool runs. To hide progress messages:
 ai-paper-fetcher weekly --quiet
 ```
 
+Add foundational AI papers from `foundational_papers.yaml`:
+
+```bash
+ai-paper-fetcher foundations
+```
+
+For a quick metadata-only foundations import:
+
+```bash
+ai-paper-fetcher foundations --no-download --no-citations
+```
+
 ## Features
 
 - Search arXiv by topic or keyword
 - Search configured topics from `config.yaml`
+- Import curated foundational papers from `foundational_papers.yaml`
 - Keep paging for new papers when earlier results are duplicates
 - Restrict configured topics by arXiv categories
 - Filter by include and exclude keywords

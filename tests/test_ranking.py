@@ -86,6 +86,21 @@ class RankingTests(unittest.TestCase):
         self.assertEqual(ranked[0].title, "Benchmark for LLM Evaluation")
         self.assertEqual(ranked[0].priority, "High")
 
+    def test_foundational_paper_gets_priority_boost(self):
+        item = paper(
+            "Attention Is All You Need",
+            "A transformer architecture.",
+            published_date="2017-06-12",
+            citation_count="",
+        )
+        item.collection = "foundational"
+
+        score = score_paper(item, today=date(2026, 6, 13))
+
+        self.assertGreaterEqual(score, 10)
+        self.assertEqual(item.priority, "High")
+        self.assertIn("foundational", item.matched_keywords)
+
 
 if __name__ == "__main__":
     unittest.main()

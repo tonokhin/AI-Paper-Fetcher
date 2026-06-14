@@ -12,6 +12,7 @@ class Paper:
     categories: str
     topic: str
     pdf_url: str
+    collection: str = ""
     doi: str = ""
     citation_count: str = ""
     citation_source: str = ""
@@ -42,6 +43,7 @@ FIELDNAMES = [
     "categories",
     "topic",
     "pdf_url",
+    "collection",
     "doi",
     "citation_count",
     "citation_source",

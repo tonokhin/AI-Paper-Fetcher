@@ -79,6 +79,10 @@ def score_paper(
     if citation_score:
         matched.append("cited")
 
+    if paper.collection == "foundational":
+        score += 10
+        matched.append("foundational")
+
     for keyword in _exclude_keywords(topic_config):
         if keyword.lower() in title or keyword.lower() in abstract:
             score -= 6

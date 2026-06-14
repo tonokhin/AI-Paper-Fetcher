@@ -69,6 +69,9 @@ def _paper_lines(paper: Paper) -> list[str]:
         f"- Why read it: {_value_or_dash(paper.reason_to_read)}",
     ]
 
+    if paper.collection:
+        lines.append(f"- Collection: {paper.collection}")
+
     if paper.matched_keywords:
         lines.append(f"- Matched keywords: {paper.matched_keywords}")
 

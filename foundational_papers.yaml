@@ -1,0 +1,70 @@
+papers:
+  - title: "Attention Is All You Need"
+    arxiv_id: "1706.03762"
+    topic: "foundations_transformers"
+    note: "Introduced the Transformer architecture."
+
+  - title: "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+    arxiv_id: "1810.04805"
+    topic: "foundations_language_models"
+    note: "Established bidirectional pretraining for language understanding."
+
+  - title: "Language Models are Few-Shot Learners"
+    arxiv_id: "2005.14165"
+    topic: "foundations_language_models"
+    note: "Introduced GPT-3 and popularized few-shot prompting."
+
+  - title: "Training language models to follow instructions with human feedback"
+    arxiv_id: "2203.02155"
+    topic: "foundations_alignment"
+    note: "Introduced InstructGPT and a major RLHF recipe."
+
+  - title: "LoRA: Low-Rank Adaptation of Large Language Models"
+    arxiv_id: "2106.09685"
+    topic: "foundations_fine_tuning"
+    note: "Introduced parameter-efficient low-rank adaptation."
+
+  - title: "Chain-of-Thought Prompting Elicits Reasoning in Large Language Models"
+    arxiv_id: "2201.11903"
+    topic: "foundations_reasoning"
+    note: "Popularized chain-of-thought prompting."
+
+  - title: "ReAct: Synergizing Reasoning and Acting in Language Models"
+    arxiv_id: "2210.03629"
+    topic: "foundations_agents"
+    note: "Connected reasoning traces with tool-using actions."
+
+  - title: "Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks"
+    arxiv_id: "2005.11401"
+    topic: "foundations_retrieval"
+    note: "A key RAG paper for retrieval-grounded generation."
+
+  - title: "Learning Transferable Visual Models From Natural Language Supervision"
+    arxiv_id: "2103.00020"
+    topic: "foundations_multimodal"
+    note: "Introduced CLIP-style contrastive language-image pretraining."
+
+  - title: "Mastering Chess and Shogi by Self-Play with a General Reinforcement Learning Algorithm"
+    arxiv_id: "1712.01815"
+    topic: "foundations_reinforcement_learning"
+    note: "Presented AlphaZero."
+
+  - title: "Playing Atari with Deep Reinforcement Learning"
+    arxiv_id: "1312.5602"
+    topic: "foundations_reinforcement_learning"
+    note: "Established deep Q-learning on Atari."
+
+  - title: "Generative Adversarial Networks"
+    arxiv_id: "1406.2661"
+    topic: "foundations_generative_models"
+    note: "Introduced GANs."
+
+  - title: "Denoising Diffusion Probabilistic Models"
+    arxiv_id: "2006.11239"
+    topic: "foundations_generative_models"
+    note: "A core modern diffusion-model paper."
+
+  - title: "An Image is Worth 16x16 Words: Transformers for Image Recognition at Scale"
+    arxiv_id: "2010.11929"
+    topic: "foundations_vision"
+    note: "Introduced Vision Transformers."

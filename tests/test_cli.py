@@ -174,6 +174,45 @@ class CliTests(unittest.TestCase):
         self.assertIn("# AI Paper Reading List", report)
         self.assertIn("A Benchmark for LLM Evaluation", report)
 
+    def test_foundations_command_adds_foundational_papers(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            data_dir = Path(temp_dir) / "data"
+            papers_dir = Path(temp_dir) / "papers"
+            foundations_config = Path(temp_dir) / "foundational_papers.yaml"
+            foundations_config.write_text(
+                """
+papers:
+  - title: "Attention Is All You Need"
+    arxiv_id: "1706.03762"
+    topic: "foundations_transformers"
+    note: "Introduced the Transformer."
+""",
+                encoding="utf-8",
+            )
+
+            with patch("ai_paper_fetcher.cli.fetch_paper_by_id", return_value=sample_paper_with_id("1706.03762")):
+                exit_code = main(
+                    [
+                        "foundations",
+                        "--no-download",
+                        "--no-citations",
+                        "--foundations-config",
+                        str(foundations_config),
+                        "--data-dir",
+                        str(data_dir),
+                        "--papers-dir",
+                        str(papers_dir),
+                    ]
+                )
+
+            papers = load_papers(data_dir / "reading_list.csv")
+
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(len(papers), 1)
+        self.assertEqual(papers[0].paper_id, "1706.03762")
+        self.assertEqual(papers[0].collection, "foundational")
+        self.assertEqual(papers[0].priority, "High")
+
     def test_weekly_report_file_uses_date(self):
         path = weekly_report_file(Path("weekly_reports"), "2026-06-14")
 

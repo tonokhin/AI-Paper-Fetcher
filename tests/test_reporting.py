@@ -27,6 +27,12 @@ def paper() -> Paper:
     )
 
 
+def foundational_paper() -> Paper:
+    item = paper()
+    item.collection = "foundational"
+    return item
+
+
 class ReportingTests(unittest.TestCase):
     def test_render_markdown_report_groups_by_priority_and_topic(self):
         markdown = render_markdown_report([paper()])
@@ -37,6 +43,7 @@ class ReportingTests(unittest.TestCase):
         self.assertIn("#### A Benchmark for LLM Evaluation", markdown)
         self.assertIn("- Score: 18", markdown)
         self.assertIn("- Citations: 12", markdown)
+        self.assertIn("- Collection: foundational", render_markdown_report([foundational_paper()]))
         self.assertIn("- Local PDF: papers/llm_evaluation/paper.pdf", markdown)
         self.assertIn("- OpenAlex: https://openalex.org/W1", markdown)
 
