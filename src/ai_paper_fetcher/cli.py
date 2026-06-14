@@ -45,6 +45,7 @@ class FetchSummary:
     saved: int = 0
     ranked: int = 0
     pages_searched: int = 0
+    updated: int = 0
 
     def add(self, other: "FetchSummary") -> None:
         self.found += other.found
@@ -55,11 +56,21 @@ class FetchSummary:
         self.saved += other.saved
         self.ranked += other.ranked
         self.pages_searched += other.pages_searched
+        self.updated += other.updated
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
+
+    if args.command == "download-missing":
+        summary = download_missing_pdfs(
+            Path(args.data_dir) / "reading_list.csv",
+            Path(args.papers_dir),
+            Progress(args.quiet),
+        )
+        print_summary(summary, Path(args.data_dir) / "reading_list.csv")
+        return 0
 
     if args.command == "foundations":
         try:
@@ -150,7 +161,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "command",
         nargs="?",
-        choices=["fetch", "citations", "rank", "report", "weekly", "foundations"],
+        choices=["fetch", "citations", "rank", "report", "weekly", "foundations", "download-missing"],
         help="Command to run.",
     )
     source = parser.add_mutually_exclusive_group()
@@ -280,6 +291,42 @@ def run_foundations(args: argparse.Namespace) -> FetchSummary:
         progress.log("Ranking reading list...")
         summary.ranked = rank_existing_reading_list(reading_list_path, Path(args.config))
     return summary
+
+
+def download_missing_pdfs(csv_path: Path, papers_dir: Path, progress: Progress | None = None) -> FetchSummary:
+    progress = progress or Progress()
+    papers = load_papers(csv_path)
+    summary = FetchSummary(found=len(papers))
+    changed = False
+
+    for paper in papers:
+        if not paper_needs_pdf(paper):
+            continue
+
+        try:
+            progress.log(f"Downloading missing PDF: {paper.title}")
+            path = download_pdf(paper, papers_dir)
+            mark_downloaded(paper, path)
+            summary.downloaded += 1
+            summary.updated += 1
+            changed = True
+        except (OSError, URLError, ValueError) as error:
+            summary.failed_downloads += 1
+            paper.reason_to_read = f"PDF download failed: {error}"
+            changed = True
+
+    if changed:
+        write_papers(csv_path, papers)
+
+    return summary
+
+
+def paper_needs_pdf(paper: Paper) -> bool:
+    if not paper.pdf_url:
+        return False
+    if not paper.local_pdf_path:
+        return True
+    return not Path(paper.local_pdf_path).exists()
 
 
 def fetch_foundational_paper(config: FoundationalPaperConfig) -> Paper | None:
@@ -599,4 +646,6 @@ def print_summary(summary: FetchSummary, reading_list_path: Path) -> None:
         print(f"Ranked {summary.ranked} papers")
     if summary.pages_searched > 1:
         print(f"Searched {summary.pages_searched} arXiv pages")
+    if summary.updated:
+        print(f"Updated {summary.updated} existing metadata records")
     print(f"Saved {summary.saved} metadata records to {reading_list_path.as_posix()}")

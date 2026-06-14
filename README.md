@@ -46,6 +46,12 @@ Generate a Markdown report from the current reading list:
 .venv/bin/ai-paper-fetcher report
 ```
 
+Download PDFs later for papers that were previously saved with `--no-download`:
+
+```bash
+.venv/bin/ai-paper-fetcher download-missing
+```
+
 ## Outputs
 
 Generated outputs stay local and are ignored by git:
@@ -70,6 +76,7 @@ See [examples/sample_reading_list.md](examples/sample_reading_list.md) for a sma
 | `citations` | Refresh OpenAlex citation counts for saved papers. |
 | `rank` | Re-rank the current CSV reading list. |
 | `report` | Regenerate the Markdown reading list. |
+| `download-missing` | Download PDFs for existing rows with missing local files. |
 
 ## Examples
 
@@ -133,6 +140,7 @@ Foundational papers live in [foundational_papers.yaml](foundational_papers.yaml)
 - Track seen papers across runs.
 - Enrich citation counts from OpenAlex when available.
 - Download PDFs into topic-specific folders.
+- Backfill missing PDFs after metadata-only runs.
 - Rank by topic relevance, high-value research terms, recency, citation count, and foundational status.
 - Generate Markdown reading reports.
 - Generate dated weekly reports.

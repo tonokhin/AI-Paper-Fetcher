@@ -213,6 +213,65 @@ papers:
         self.assertEqual(papers[0].collection, "foundational")
         self.assertEqual(papers[0].priority, "High")
 
+    def test_download_missing_downloads_papers_without_local_pdf(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            data_dir = Path(temp_dir) / "data"
+            papers_dir = Path(temp_dir) / "papers"
+            item = sample_paper()
+            item.pdf_url = "https://arxiv.org/pdf/1234.5678"
+            write_papers(data_dir / "reading_list.csv", [item])
+
+            destination = papers_dir / "llm_evaluation" / "paper.pdf"
+            destination.parent.mkdir(parents=True)
+            destination.write_text("pdf", encoding="utf-8")
+
+            with patch("ai_paper_fetcher.cli.download_pdf", return_value=destination):
+                exit_code = main(
+                    [
+                        "download-missing",
+                        "--data-dir",
+                        str(data_dir),
+                        "--papers-dir",
+                        str(papers_dir),
+                    ]
+                )
+
+            papers = load_papers(data_dir / "reading_list.csv")
+
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(papers[0].local_pdf_path, destination.as_posix())
+        self.assertTrue(papers[0].downloaded_at)
+
+    def test_download_missing_downloads_when_local_file_is_missing(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            data_dir = Path(temp_dir) / "data"
+            papers_dir = Path(temp_dir) / "papers"
+            item = sample_paper()
+            item.pdf_url = "https://arxiv.org/pdf/1234.5678"
+            item.local_pdf_path = str(Path(temp_dir) / "missing.pdf")
+            write_papers(data_dir / "reading_list.csv", [item])
+
+            destination = papers_dir / "llm_evaluation" / "paper.pdf"
+            destination.parent.mkdir(parents=True)
+            destination.write_text("pdf", encoding="utf-8")
+
+            with patch("ai_paper_fetcher.cli.download_pdf", return_value=destination) as download:
+                exit_code = main(
+                    [
+                        "download-missing",
+                        "--data-dir",
+                        str(data_dir),
+                        "--papers-dir",
+                        str(papers_dir),
+                    ]
+                )
+
+            papers = load_papers(data_dir / "reading_list.csv")
+
+        self.assertEqual(exit_code, 0)
+        download.assert_called_once()
+        self.assertEqual(papers[0].local_pdf_path, destination.as_posix())
+
     def test_weekly_report_file_uses_date(self):
         path = weekly_report_file(Path("weekly_reports"), "2026-06-14")
 
