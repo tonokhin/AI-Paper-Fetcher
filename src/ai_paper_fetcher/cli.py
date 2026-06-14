@@ -26,6 +26,15 @@ from .storage import (
 )
 
 
+class Progress:
+    def __init__(self, quiet: bool = False) -> None:
+        self.quiet = quiet
+
+    def log(self, message: str) -> None:
+        if not self.quiet:
+            print(message, file=sys.stderr, flush=True)
+
+
 @dataclass
 class FetchSummary:
     found: int = 0
@@ -180,6 +189,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--report-date",
         help="Date to use for weekly report filename, in YYYY-MM-DD format.",
     )
+    parser.add_argument("--quiet", action="store_true", help="Hide progress messages.")
     return parser
 
 
@@ -221,6 +231,7 @@ def generate_report(csv_path: Path, output_path: Path) -> int:
 
 
 def run_weekly(args: argparse.Namespace) -> WeeklyResult:
+    progress = Progress(args.quiet)
     data_dir = Path(args.data_dir)
     reading_list_path = data_dir / "reading_list.csv"
     reading_list_report_path = data_dir / "reading_list.md"
@@ -242,9 +253,13 @@ def run_weekly(args: argparse.Namespace) -> WeeklyResult:
         no_download=args.no_download,
         no_citations=args.no_citations,
         no_rank=False,
+        quiet=args.quiet,
     )
+    progress.log("Starting weekly workflow...")
     summary = run_fetch(fetch_args, argparse.ArgumentParser(prog="ai-paper-fetcher weekly"))
+    progress.log("Generating reading list report...")
     report_count = generate_report(reading_list_path, reading_list_report_path)
+    progress.log("Generating weekly report...")
     generate_report(reading_list_path, weekly_report_path)
 
     return WeeklyResult(
@@ -269,6 +284,7 @@ def weekly_report_file(reports_dir: Path, report_date: str | None = None) -> Pat
 def run_fetch(args: argparse.Namespace, parser: argparse.ArgumentParser) -> FetchSummary:
     data_dir = Path(args.data_dir)
     papers_dir = Path(args.papers_dir)
+    progress = Progress(getattr(args, "quiet", False))
 
     if args.topic:
         return fetch(
@@ -283,6 +299,7 @@ def run_fetch(args: argparse.Namespace, parser: argparse.ArgumentParser) -> Fetc
             config_path=Path(args.config),
             new_results=args.new_results,
             max_pages=args.max_pages,
+            progress=progress,
         )
 
     if args.config_topic:
@@ -300,12 +317,14 @@ def run_fetch(args: argparse.Namespace, parser: argparse.ArgumentParser) -> Fetc
             config_path=Path(args.config),
             new_results=args.new_results,
             max_pages=args.max_pages,
+            progress=progress,
         )
 
     if args.fetch_all:
         topics = load_topics(Path(args.config))
         summary = FetchSummary()
         for topic_config in topics.values():
+            progress.log(f"Starting topic: {topic_config.name}")
             summary.add(
                 fetch_config_topic(
                     topic_config,
@@ -318,9 +337,11 @@ def run_fetch(args: argparse.Namespace, parser: argparse.ArgumentParser) -> Fetc
                     config_path=Path(args.config),
                     new_results=args.new_results,
                     max_pages=args.max_pages,
+                    progress=progress,
                 )
             )
         if not args.no_rank:
+            progress.log("Ranking reading list...")
             summary.ranked = rank_existing_reading_list(data_dir / "reading_list.csv", Path(args.config))
         return summary
 
@@ -339,6 +360,7 @@ def fetch_config_topic(
     config_path: Path | None = None,
     new_results: bool = False,
     max_pages: int = 5,
+    progress: Progress | None = None,
 ) -> FetchSummary:
     return fetch(
         topic=topic_config.name,
@@ -352,6 +374,7 @@ def fetch_config_topic(
         config_path=config_path,
         new_results=new_results,
         max_pages=max_pages,
+        progress=progress,
         include_keywords=topic_config.include_keywords,
         exclude_keywords=topic_config.exclude_keywords,
         categories=topic_config.categories,
@@ -371,11 +394,13 @@ def fetch(
     config_path: Path | None = None,
     new_results: bool = False,
     max_pages: int = 5,
+    progress: Progress | None = None,
     include_keywords: list[str] | None = None,
     exclude_keywords: list[str] | None = None,
     categories: list[str] | None = None,
     published_after: str | None = None,
 ) -> FetchSummary:
+    progress = progress or Progress()
     ensure_project_dirs(data_dir, papers_dir)
     reading_list_path = data_dir / "reading_list.csv"
     seen_path = data_dir / "seen_papers.json"
@@ -390,6 +415,7 @@ def fetch(
     page_size = max(1, max_results)
     page_limit = max(1, max_pages if new_results else 1)
     for page in range(page_limit):
+        progress.log(f"Fetching {topic} page {page + 1}/{page_limit}...")
         papers = search_papers(
             query=query,
             max_results=page_size,
@@ -399,8 +425,10 @@ def fetch(
         )
         summary.pages_searched += 1
         if not papers:
+            progress.log(f"No papers returned for {topic}; stopping.")
             break
 
+        raw_count = len(papers)
         papers = filter_papers(
             papers,
             include_keywords=include_keywords,
@@ -408,21 +436,28 @@ def fetch(
             published_after=published_after,
         )
         summary.found += len(papers)
+        filtered_count = raw_count - len(papers)
+        if filtered_count:
+            progress.log(f"Filtered out {filtered_count} papers for {topic}.")
 
         for paper in papers:
             if paper.paper_id in known_ids:
                 summary.skipped_duplicates += 1
+                progress.log(f"Skipping duplicate: {paper.title}")
                 continue
 
             if enrich_with_citations:
+                progress.log(f"Looking up citations: {paper.title}")
                 summary.citation_matches += enrich_citations([paper])
 
             if no_download:
+                progress.log(f"Saving metadata: {paper.title}")
                 new_papers.append(paper)
                 known_ids.add(paper.paper_id)
                 seen.add(paper.paper_id)
             else:
                 try:
+                    progress.log(f"Downloading PDF: {paper.title}")
                     path = download_pdf(paper, papers_dir)
                     mark_downloaded(paper, path)
                     summary.downloaded += 1
@@ -437,6 +472,9 @@ def fetch(
             if new_results and len(new_papers) >= max_results:
                 break
 
+        progress.log(
+            f"Topic {topic}: saved {len(new_papers)} new, skipped {summary.skipped_duplicates} duplicates so far."
+        )
         if not new_results or len(new_papers) >= max_results:
             break
 
@@ -444,6 +482,7 @@ def fetch(
     save_seen(seen_path, seen)
     summary.saved = len(new_papers)
     if auto_rank:
+        progress.log("Ranking reading list...")
         summary.ranked = rank_existing_reading_list(reading_list_path, config_path or Path("config.yaml"))
     return summary
 

@@ -87,6 +87,12 @@ To make weekly inspect only the first page of arXiv results per topic:
 ai-paper-fetcher weekly --no-new-results
 ```
 
+Progress is printed while the tool runs. To hide progress messages:
+
+```bash
+ai-paper-fetcher weekly --quiet
+```
+
 ## Features
 
 - Search arXiv by topic or keyword

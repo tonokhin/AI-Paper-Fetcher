@@ -1,4 +1,5 @@
 from pathlib import Path
+from io import StringIO
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -286,6 +287,30 @@ class CliTests(unittest.TestCase):
         self.assertEqual(exit_code, 0)
         self.assertEqual(search.call_count, 1)
         self.assertEqual([paper.paper_id for paper in papers], ["duplicate"])
+
+    def test_quiet_hides_progress_messages(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            data_dir = Path(temp_dir) / "data"
+
+            with (
+                patch("ai_paper_fetcher.cli.search_papers", return_value=[sample_paper()]),
+                patch("sys.stderr", new_callable=StringIO) as stderr,
+            ):
+                exit_code = main(
+                    [
+                        "fetch",
+                        "--topic",
+                        "llm_evaluation",
+                        "--no-download",
+                        "--no-citations",
+                        "--quiet",
+                        "--data-dir",
+                        str(data_dir),
+                    ]
+                )
+
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(stderr.getvalue(), "")
 
 
 if __name__ == "__main__":
