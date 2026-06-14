@@ -81,6 +81,14 @@ ai-paper-fetcher weekly
 
 This fetches all configured topics, pages past duplicates until it finds new papers, enriches citations, downloads PDFs, ranks the reading list, writes `data/reading_list.md`, and writes a dated report to `weekly_reports/YYYY-MM-DD.md`.
 
+For a quick metadata-only run:
+
+```bash
+ai-paper-fetcher weekly --fast
+```
+
+Fast mode is equivalent to a small weekly run without PDF downloads or citation lookups.
+
 To make weekly inspect only the first page of arXiv results per topic:
 
 ```bash

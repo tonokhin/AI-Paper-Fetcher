@@ -288,6 +288,49 @@ class CliTests(unittest.TestCase):
         self.assertEqual(search.call_count, 1)
         self.assertEqual([paper.paper_id for paper in papers], ["duplicate"])
 
+    def test_weekly_fast_mode_uses_lightweight_settings(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            data_dir = Path(temp_dir) / "data"
+            papers_dir = Path(temp_dir) / "papers"
+            config_path = Path(temp_dir) / "config.yaml"
+            write_one_topic_config(config_path)
+
+            pages = [
+                [sample_paper_with_id("new-1")],
+                [sample_paper_with_id("new-2")],
+            ]
+            with (
+                patch("ai_paper_fetcher.cli.search_papers", side_effect=pages) as search,
+                patch("ai_paper_fetcher.cli.enrich_citations") as citations,
+            ):
+                exit_code = main(
+                    [
+                        "weekly",
+                        "--fast",
+                        "--max-results",
+                        "20",
+                        "--max-pages",
+                        "10",
+                        "--config",
+                        str(config_path),
+                        "--data-dir",
+                        str(data_dir),
+                        "--papers-dir",
+                        str(papers_dir),
+                        "--weekly-reports-dir",
+                        str(Path(temp_dir) / "weekly_reports"),
+                    ]
+                )
+
+            papers = load_papers(data_dir / "reading_list.csv")
+
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(search.call_count, 2)
+        self.assertEqual(search.call_args_list[0].kwargs["max_results"], 3)
+        self.assertEqual(len(papers), 2)
+        citations.assert_not_called()
+        self.assertEqual(list(papers_dir.glob("**/*.pdf")), [])
+
     def test_quiet_hides_progress_messages(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             data_dir = Path(temp_dir) / "data"

@@ -189,6 +189,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--report-date",
         help="Date to use for weekly report filename, in YYYY-MM-DD format.",
     )
+    parser.add_argument(
+        "--fast",
+        action="store_true",
+        help="Quick weekly mode: max-results 3, max-pages 2, no PDF downloads, no citation lookups.",
+    )
     parser.add_argument("--quiet", action="store_true", help="Hide progress messages.")
     return parser
 
@@ -231,6 +236,7 @@ def generate_report(csv_path: Path, output_path: Path) -> int:
 
 
 def run_weekly(args: argparse.Namespace) -> WeeklyResult:
+    apply_fast_mode(args)
     progress = Progress(args.quiet)
     data_dir = Path(args.data_dir)
     reading_list_path = data_dir / "reading_list.csv"
@@ -268,6 +274,15 @@ def run_weekly(args: argparse.Namespace) -> WeeklyResult:
         reading_list_report_path=reading_list_report_path,
         weekly_report_path=weekly_report_path,
     )
+
+
+def apply_fast_mode(args: argparse.Namespace) -> None:
+    if not args.fast:
+        return
+    args.max_results = 3
+    args.max_pages = 2
+    args.no_download = True
+    args.no_citations = True
 
 
 def weekly_report_file(reports_dir: Path, report_date: str | None = None) -> Path:
