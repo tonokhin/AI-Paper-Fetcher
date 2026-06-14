@@ -1,140 +1,157 @@
 # AI Paper Fetcher
 
-AI Paper Fetcher is a command-line tool that searches arXiv for AI research papers, downloads PDFs, stores metadata, and avoids duplicates across runs.
+AI Paper Fetcher is a command-line research assistant for finding, organizing, ranking, and reporting on AI papers from arXiv.
+
+It supports two complementary workflows:
+
+- `weekly`: find new papers from configured research topics.
+- `foundations`: import classic papers from a curated foundational reading list.
+
+The tool stores local metadata, skips duplicates, enriches citation counts with OpenAlex, ranks papers by relevance, downloads PDFs when requested, and generates Markdown reading reports.
 
 ## Quick Start
 
 ```bash
 python -m venv .venv
 .venv/bin/python -m pip install -e .
-ai-paper-fetcher weekly --max-results 10
+.venv/bin/ai-paper-fetcher weekly --fast
 ```
 
-Fetch one ad hoc topic:
+Fast mode is a metadata-only weekly run:
+
+```text
+max-results 3
+max-pages 2
+no PDF downloads
+no citation lookups
+```
+
+## Main Workflows
+
+Run the weekly research feed:
 
 ```bash
-ai-paper-fetcher fetch --topic "LLM evaluation" --max-results 10
+.venv/bin/ai-paper-fetcher weekly --max-results 10
 ```
 
-## Configured Topics
-
-Define repeatable research tracks in `config.yaml`, then fetch one topic:
+Import foundational AI papers:
 
 ```bash
-ai-paper-fetcher fetch --config-topic llm_evaluation --max-results 10
+.venv/bin/ai-paper-fetcher foundations --no-download --no-citations
 ```
 
-Fetch every configured topic:
+Generate a Markdown report from the current reading list:
 
 ```bash
-ai-paper-fetcher fetch --all --max-results 10
+.venv/bin/ai-paper-fetcher report
 ```
 
-If many top arXiv results are duplicates you have already seen, keep paging until the tool saves the requested number of new papers:
+## Outputs
+
+Generated outputs stay local and are ignored by git:
+
+```text
+data/reading_list.csv
+data/reading_list.md
+data/seen_papers.json
+papers/
+weekly_reports/YYYY-MM-DD.md
+```
+
+See [examples/sample_reading_list.md](examples/sample_reading_list.md) for a small committed example of the report format.
+
+## Commands
+
+| Command | Purpose |
+| --- | --- |
+| `weekly` | Fetch all configured topics, rank, and generate reports. |
+| `foundations` | Import classic papers from `foundational_papers.yaml`. |
+| `fetch` | Fetch one ad hoc topic, one configured topic, or all topics. |
+| `citations` | Refresh OpenAlex citation counts for saved papers. |
+| `rank` | Re-rank the current CSV reading list. |
+| `report` | Regenerate the Markdown reading list. |
+
+## Examples
+
+Fetch one configured topic:
 
 ```bash
-ai-paper-fetcher fetch --config-topic llm_evaluation --max-results 10 --new-results --max-pages 5
+.venv/bin/ai-paper-fetcher fetch --config-topic llm_evaluation --max-results 10
 ```
 
-Use `--no-download` to save metadata without downloading PDFs:
+Fetch all configured topics:
 
 ```bash
-ai-paper-fetcher fetch --all --max-results 10 --no-download
+.venv/bin/ai-paper-fetcher fetch --all --max-results 10
 ```
 
-Citation counts are enriched from OpenAlex by default when a match is found. To skip that network step:
+Keep paging until enough new papers are found:
 
 ```bash
-ai-paper-fetcher fetch --all --max-results 10 --no-citations
+.venv/bin/ai-paper-fetcher fetch --config-topic llm_evaluation --max-results 10 --new-results --max-pages 5
 ```
 
-To add or refresh citation counts for an existing reading list:
+Run weekly without slow network enrichments:
 
 ```bash
-ai-paper-fetcher citations
-ai-paper-fetcher citations --refresh-citations
+.venv/bin/ai-paper-fetcher weekly --fast
 ```
 
-Rank the saved reading list by relevance:
+Run weekly but inspect only the first arXiv page per topic:
 
 ```bash
-ai-paper-fetcher rank
+.venv/bin/ai-paper-fetcher weekly --no-new-results
 ```
 
-Fetch ranks automatically by default. To skip that step:
+Hide progress messages:
 
 ```bash
-ai-paper-fetcher fetch --all --max-results 10 --no-rank
+.venv/bin/ai-paper-fetcher weekly --quiet
 ```
 
-Generate a Markdown reading list:
+## Configuration
 
-```bash
-ai-paper-fetcher report
-```
+Research topics live in [config.yaml](config.yaml).
 
-Run the full weekly workflow:
+Each topic can define:
 
-```bash
-ai-paper-fetcher weekly
-```
+- arXiv search query
+- include keywords
+- exclude keywords
+- arXiv categories
+- optional date filters
 
-This fetches all configured topics, pages past duplicates until it finds new papers, enriches citations, downloads PDFs, ranks the reading list, writes `data/reading_list.md`, and writes a dated report to `weekly_reports/YYYY-MM-DD.md`.
-
-For a quick metadata-only run:
-
-```bash
-ai-paper-fetcher weekly --fast
-```
-
-Fast mode is equivalent to a small weekly run without PDF downloads or citation lookups.
-
-To make weekly inspect only the first page of arXiv results per topic:
-
-```bash
-ai-paper-fetcher weekly --no-new-results
-```
-
-Progress is printed while the tool runs. To hide progress messages:
-
-```bash
-ai-paper-fetcher weekly --quiet
-```
-
-Add foundational AI papers from `foundational_papers.yaml`:
-
-```bash
-ai-paper-fetcher foundations
-```
-
-For a quick metadata-only foundations import:
-
-```bash
-ai-paper-fetcher foundations --no-download --no-citations
-```
+Foundational papers live in [foundational_papers.yaml](foundational_papers.yaml). Entries are fetched by exact arXiv ID and tagged as `collection=foundational`.
 
 ## Features
 
-- Search arXiv by topic or keyword
-- Search configured topics from `config.yaml`
-- Import curated foundational papers from `foundational_papers.yaml`
-- Keep paging for new papers when earlier results are duplicates
-- Restrict configured topics by arXiv categories
-- Filter by include and exclude keywords
-- Add citation counts from OpenAlex when available
-- Rank papers by relevance, recency, citations, and configured keywords
-- Generate a Markdown reading report
-- Generate dated weekly reports
-- Download PDFs into topic-specific folders
-- Save metadata to `data/reading_list.csv`
-- Track seen papers in `data/seen_papers.json`
-- Skip duplicate papers on later runs
+- Search arXiv by topic or keyword.
+- Search configured topics from `config.yaml`.
+- Import curated foundational papers from `foundational_papers.yaml`.
+- Page past duplicates when looking for new papers.
+- Filter by arXiv categories and keywords.
+- Track seen papers across runs.
+- Enrich citation counts from OpenAlex when available.
+- Download PDFs into topic-specific folders.
+- Rank by topic relevance, high-value research terms, recency, citation count, and foundational status.
+- Generate Markdown reading reports.
+- Generate dated weekly reports.
+- Print progress during long runs.
 
-## Example Output
+## Architecture
+
+See [docs/architecture.md](docs/architecture.md).
+
+At a high level:
 
 ```text
-Found 10 papers
-Downloaded 8 new PDFs
-Skipped 2 duplicates
-Saved metadata to data/reading_list.csv
+arXiv -> filters -> duplicate tracking -> OpenAlex citations -> PDF storage -> ranking -> Markdown reports
+```
+
+## Development
+
+Run tests:
+
+```bash
+.venv/bin/python -m unittest discover -s tests
 ```
