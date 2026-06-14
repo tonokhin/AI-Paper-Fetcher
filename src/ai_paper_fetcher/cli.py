@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import sys
+from datetime import date
 from dataclasses import dataclass
 from pathlib import Path
 from urllib.error import URLError
@@ -13,6 +14,7 @@ from .downloader import download_pdf, mark_downloaded
 from .filtering import filter_papers
 from .models import Paper
 from .ranking import rank_papers
+from .reporting import write_markdown_report
 from .storage import (
     append_papers,
     ensure_project_dirs,
@@ -47,6 +49,29 @@ class FetchSummary:
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
+
+    if args.command == "weekly":
+        try:
+            result = run_weekly(args)
+        except (FileNotFoundError, ValueError) as error:
+            print(f"Weekly run error: {error}", file=sys.stderr)
+            return 1
+        except URLError as error:
+            print(f"Could not reach arXiv or OpenAlex: {error}", file=sys.stderr)
+            return 1
+
+        print_summary(result.summary, Path(args.data_dir) / "reading_list.csv")
+        print(f"Generated report for {result.report_count} papers")
+        print(f"Saved report to {result.reading_list_report_path.as_posix()}")
+        print(f"Saved weekly report to {result.weekly_report_path.as_posix()}")
+        return 0
+
+    if args.command == "report":
+        output_path = Path(args.report_path) if args.report_path else Path(args.data_dir) / "reading_list.md"
+        count = generate_report(Path(args.data_dir) / "reading_list.csv", output_path)
+        print(f"Generated report for {count} papers")
+        print(f"Saved report to {output_path.as_posix()}")
+        return 0
 
     if args.command == "rank":
         try:
@@ -98,7 +123,12 @@ def build_parser() -> argparse.ArgumentParser:
         prog="ai-paper-fetcher",
         description="Find, download, and organize AI research papers from arXiv.",
     )
-    parser.add_argument("command", nargs="?", choices=["fetch", "citations", "rank"], help="Command to run.")
+    parser.add_argument(
+        "command",
+        nargs="?",
+        choices=["fetch", "citations", "rank", "report", "weekly"],
+        help="Command to run.",
+    )
     source = parser.add_mutually_exclusive_group()
     source.add_argument("--topic", help="Topic or keyword query to search on arXiv.")
     source.add_argument("--config-topic", help="Named topic from config.yaml.")
@@ -127,7 +157,25 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Skip automatic ranking after fetch.",
     )
+    parser.add_argument("--report-path", help="Output path for the Markdown report.")
+    parser.add_argument(
+        "--weekly-reports-dir",
+        default="weekly_reports",
+        help="Directory for dated weekly Markdown reports.",
+    )
+    parser.add_argument(
+        "--report-date",
+        help="Date to use for weekly report filename, in YYYY-MM-DD format.",
+    )
     return parser
+
+
+@dataclass
+class WeeklyResult:
+    summary: FetchSummary
+    report_count: int
+    reading_list_report_path: Path
+    weekly_report_path: Path
 
 
 def enrich_existing_reading_list(csv_path: Path, refresh: bool = False) -> int:
@@ -151,6 +199,56 @@ def rank_existing_reading_list(csv_path: Path, config_path: Path) -> int:
     ranked = rank_papers(papers, topics)
     write_papers(csv_path, ranked)
     return len(ranked)
+
+
+def generate_report(csv_path: Path, output_path: Path) -> int:
+    papers = load_papers(csv_path)
+    write_markdown_report(papers, output_path)
+    return len(papers)
+
+
+def run_weekly(args: argparse.Namespace) -> WeeklyResult:
+    data_dir = Path(args.data_dir)
+    reading_list_path = data_dir / "reading_list.csv"
+    reading_list_report_path = data_dir / "reading_list.md"
+    weekly_report_path = weekly_report_file(
+        Path(args.weekly_reports_dir),
+        args.report_date,
+    )
+
+    fetch_args = argparse.Namespace(
+        topic=None,
+        config_topic=None,
+        fetch_all=True,
+        max_results=args.max_results,
+        config=args.config,
+        data_dir=args.data_dir,
+        papers_dir=args.papers_dir,
+        no_download=args.no_download,
+        no_citations=args.no_citations,
+        no_rank=False,
+    )
+    summary = run_fetch(fetch_args, argparse.ArgumentParser(prog="ai-paper-fetcher weekly"))
+    report_count = generate_report(reading_list_path, reading_list_report_path)
+    generate_report(reading_list_path, weekly_report_path)
+
+    return WeeklyResult(
+        summary=summary,
+        report_count=report_count,
+        reading_list_report_path=reading_list_report_path,
+        weekly_report_path=weekly_report_path,
+    )
+
+
+def weekly_report_file(reports_dir: Path, report_date: str | None = None) -> Path:
+    if report_date:
+        try:
+            parsed = date.fromisoformat(report_date)
+        except ValueError as error:
+            raise ValueError("--report-date must use YYYY-MM-DD format.") from error
+    else:
+        parsed = date.today()
+    return reports_dir / f"{parsed.isoformat()}.md"
 
 
 def run_fetch(args: argparse.Namespace, parser: argparse.ArgumentParser) -> FetchSummary:

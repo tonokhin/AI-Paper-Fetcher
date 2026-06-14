@@ -59,6 +59,20 @@ Fetch ranks automatically by default. To skip that step:
 PYTHONPATH=src python -m ai_paper_fetcher fetch --all --max-results 10 --no-rank
 ```
 
+Generate a Markdown reading list:
+
+```bash
+PYTHONPATH=src python -m ai_paper_fetcher report
+```
+
+Run the full weekly workflow:
+
+```bash
+PYTHONPATH=src python -m ai_paper_fetcher weekly
+```
+
+This fetches all configured topics, skips duplicates, enriches citations, downloads PDFs, ranks the reading list, writes `data/reading_list.md`, and writes a dated report to `weekly_reports/YYYY-MM-DD.md`.
+
 ## Features
 
 - Search arXiv by topic or keyword
@@ -67,6 +81,8 @@ PYTHONPATH=src python -m ai_paper_fetcher fetch --all --max-results 10 --no-rank
 - Filter by include and exclude keywords
 - Add citation counts from OpenAlex when available
 - Rank papers by relevance, recency, citations, and configured keywords
+- Generate a Markdown reading report
+- Generate dated weekly reports
 - Download PDFs into topic-specific folders
 - Save metadata to `data/reading_list.csv`
 - Track seen papers in `data/seen_papers.json`
