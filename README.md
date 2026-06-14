@@ -28,6 +28,12 @@ Fetch every configured topic:
 PYTHONPATH=src python -m ai_paper_fetcher fetch --all --max-results 10
 ```
 
+If many top arXiv results are duplicates you have already seen, keep paging until the tool saves the requested number of new papers:
+
+```bash
+PYTHONPATH=src python -m ai_paper_fetcher fetch --config-topic llm_evaluation --max-results 10 --new-results --max-pages 5
+```
+
 Use `--no-download` to save metadata without downloading PDFs:
 
 ```bash
@@ -71,12 +77,19 @@ Run the full weekly workflow:
 PYTHONPATH=src python -m ai_paper_fetcher weekly
 ```
 
-This fetches all configured topics, skips duplicates, enriches citations, downloads PDFs, ranks the reading list, writes `data/reading_list.md`, and writes a dated report to `weekly_reports/YYYY-MM-DD.md`.
+This fetches all configured topics, pages past duplicates until it finds new papers, enriches citations, downloads PDFs, ranks the reading list, writes `data/reading_list.md`, and writes a dated report to `weekly_reports/YYYY-MM-DD.md`.
+
+To make weekly inspect only the first page of arXiv results per topic:
+
+```bash
+PYTHONPATH=src python -m ai_paper_fetcher weekly --no-new-results
+```
 
 ## Features
 
 - Search arXiv by topic or keyword
 - Search configured topics from `config.yaml`
+- Keep paging for new papers when earlier results are duplicates
 - Restrict configured topics by arXiv categories
 - Filter by include and exclude keywords
 - Add citation counts from OpenAlex when available

@@ -23,6 +23,7 @@ def extract_arxiv_id(entry_id: str) -> str:
 def search_papers(
     query: str,
     max_results: int = 10,
+    start: int = 0,
     topic: str | None = None,
     categories: list[str] | None = None,
 ) -> list[Paper]:
@@ -30,7 +31,7 @@ def search_papers(
     params = urlencode(
         {
             "search_query": search_query,
-            "start": 0,
+            "start": start,
             "max_results": max_results,
             "sortBy": "submittedDate",
             "sortOrder": "descending",

@@ -35,6 +35,7 @@ class FetchSummary:
     citation_matches: int = 0
     saved: int = 0
     ranked: int = 0
+    pages_searched: int = 0
 
     def add(self, other: "FetchSummary") -> None:
         self.found += other.found
@@ -44,6 +45,7 @@ class FetchSummary:
         self.citation_matches += other.citation_matches
         self.saved += other.saved
         self.ranked += other.ranked
+        self.pages_searched += other.pages_searched
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -134,6 +136,17 @@ def build_parser() -> argparse.ArgumentParser:
     source.add_argument("--config-topic", help="Named topic from config.yaml.")
     source.add_argument("--all", action="store_true", dest="fetch_all", help="Fetch all configured topics.")
     parser.add_argument("--max-results", type=int, default=10, help="Maximum arXiv results.")
+    parser.add_argument(
+        "--new-results",
+        action="store_true",
+        help="Keep searching until max-results new papers are saved, or max-pages is reached. Weekly enables this by default.",
+    )
+    parser.add_argument(
+        "--no-new-results",
+        action="store_true",
+        help="Disable weekly's default behavior of paging until new papers are found.",
+    )
+    parser.add_argument("--max-pages", type=int, default=5, help="Maximum arXiv pages to inspect with --new-results.")
     parser.add_argument("--config", default="config.yaml", help="Path to topic config YAML.")
     parser.add_argument("--data-dir", default="data", help="Directory for CSV/JSON data.")
     parser.add_argument("--papers-dir", default="papers", help="Directory for downloaded PDFs.")
@@ -221,6 +234,8 @@ def run_weekly(args: argparse.Namespace) -> WeeklyResult:
         config_topic=None,
         fetch_all=True,
         max_results=args.max_results,
+        new_results=not args.no_new_results,
+        max_pages=args.max_pages,
         config=args.config,
         data_dir=args.data_dir,
         papers_dir=args.papers_dir,
@@ -266,6 +281,8 @@ def run_fetch(args: argparse.Namespace, parser: argparse.ArgumentParser) -> Fetc
             enrich_with_citations=not args.no_citations,
             auto_rank=not args.no_rank,
             config_path=Path(args.config),
+            new_results=args.new_results,
+            max_pages=args.max_pages,
         )
 
     if args.config_topic:
@@ -281,6 +298,8 @@ def run_fetch(args: argparse.Namespace, parser: argparse.ArgumentParser) -> Fetc
             enrich_with_citations=not args.no_citations,
             auto_rank=not args.no_rank,
             config_path=Path(args.config),
+            new_results=args.new_results,
+            max_pages=args.max_pages,
         )
 
     if args.fetch_all:
@@ -297,6 +316,8 @@ def run_fetch(args: argparse.Namespace, parser: argparse.ArgumentParser) -> Fetc
                     enrich_with_citations=not args.no_citations,
                     auto_rank=False,
                     config_path=Path(args.config),
+                    new_results=args.new_results,
+                    max_pages=args.max_pages,
                 )
             )
         if not args.no_rank:
@@ -316,6 +337,8 @@ def fetch_config_topic(
     enrich_with_citations: bool = True,
     auto_rank: bool = True,
     config_path: Path | None = None,
+    new_results: bool = False,
+    max_pages: int = 5,
 ) -> FetchSummary:
     return fetch(
         topic=topic_config.name,
@@ -327,6 +350,8 @@ def fetch_config_topic(
         enrich_with_citations=enrich_with_citations,
         auto_rank=auto_rank,
         config_path=config_path,
+        new_results=new_results,
+        max_pages=max_pages,
         include_keywords=topic_config.include_keywords,
         exclude_keywords=topic_config.exclude_keywords,
         categories=topic_config.categories,
@@ -344,6 +369,8 @@ def fetch(
     enrich_with_citations: bool = True,
     auto_rank: bool = True,
     config_path: Path | None = None,
+    new_results: bool = False,
+    max_pages: int = 5,
     include_keywords: list[str] | None = None,
     exclude_keywords: list[str] | None = None,
     categories: list[str] | None = None,
@@ -357,46 +384,61 @@ def fetch(
     existing_ids = load_existing_ids(reading_list_path)
     known_ids = seen | existing_ids
 
-    papers = search_papers(
-        query=query,
-        max_results=max_results,
-        topic=topic,
-        categories=categories,
-    )
-    papers = filter_papers(
-        papers,
-        include_keywords=include_keywords,
-        exclude_keywords=exclude_keywords,
-        published_after=published_after,
-    )
-    summary = FetchSummary(found=len(papers))
+    summary = FetchSummary()
     new_papers: list[Paper] = []
 
-    for paper in papers:
-        if paper.paper_id in known_ids:
-            summary.skipped_duplicates += 1
-            continue
+    page_size = max(1, max_results)
+    page_limit = max(1, max_pages if new_results else 1)
+    for page in range(page_limit):
+        papers = search_papers(
+            query=query,
+            max_results=page_size,
+            start=page * page_size,
+            topic=topic,
+            categories=categories,
+        )
+        summary.pages_searched += 1
+        if not papers:
+            break
 
-        if enrich_with_citations:
-            summary.citation_matches += enrich_citations([paper])
+        papers = filter_papers(
+            papers,
+            include_keywords=include_keywords,
+            exclude_keywords=exclude_keywords,
+            published_after=published_after,
+        )
+        summary.found += len(papers)
 
-        if no_download:
-            new_papers.append(paper)
-            known_ids.add(paper.paper_id)
-            seen.add(paper.paper_id)
-            continue
+        for paper in papers:
+            if paper.paper_id in known_ids:
+                summary.skipped_duplicates += 1
+                continue
 
-        try:
-            path = download_pdf(paper, papers_dir)
-            mark_downloaded(paper, path)
-            summary.downloaded += 1
-        except (OSError, URLError, ValueError) as error:
-            summary.failed_downloads += 1
-            paper.reason_to_read = f"PDF download failed: {error}"
+            if enrich_with_citations:
+                summary.citation_matches += enrich_citations([paper])
 
-        new_papers.append(paper)
-        known_ids.add(paper.paper_id)
-        seen.add(paper.paper_id)
+            if no_download:
+                new_papers.append(paper)
+                known_ids.add(paper.paper_id)
+                seen.add(paper.paper_id)
+            else:
+                try:
+                    path = download_pdf(paper, papers_dir)
+                    mark_downloaded(paper, path)
+                    summary.downloaded += 1
+                except (OSError, URLError, ValueError) as error:
+                    summary.failed_downloads += 1
+                    paper.reason_to_read = f"PDF download failed: {error}"
+
+                new_papers.append(paper)
+                known_ids.add(paper.paper_id)
+                seen.add(paper.paper_id)
+
+            if new_results and len(new_papers) >= max_results:
+                break
+
+        if not new_results or len(new_papers) >= max_results:
+            break
 
     append_papers(reading_list_path, new_papers)
     save_seen(seen_path, seen)
@@ -415,4 +457,6 @@ def print_summary(summary: FetchSummary, reading_list_path: Path) -> None:
     print(f"Matched citation metadata for {summary.citation_matches} papers")
     if summary.ranked:
         print(f"Ranked {summary.ranked} papers")
+    if summary.pages_searched > 1:
+        print(f"Searched {summary.pages_searched} arXiv pages")
     print(f"Saved {summary.saved} metadata records to {reading_list_path.as_posix()}")

@@ -22,6 +22,29 @@ def sample_paper() -> Paper:
     )
 
 
+def sample_paper_with_id(paper_id: str) -> Paper:
+    item = sample_paper()
+    item.paper_id = paper_id
+    item.title = f"A Benchmark for LLM Evaluation {paper_id}"
+    return item
+
+
+def write_one_topic_config(path: Path) -> None:
+    path.write_text(
+        """
+topics:
+  llm_evaluation:
+    query: "LLM evaluation"
+    include_keywords:
+      - benchmark
+    exclude_keywords: []
+    categories:
+      - cs.CL
+""",
+        encoding="utf-8",
+    )
+
+
 class CliTests(unittest.TestCase):
     def test_fetch_ranks_by_default(self):
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -70,6 +93,72 @@ class CliTests(unittest.TestCase):
         self.assertEqual(papers[0].priority, "")
         self.assertEqual(papers[0].relevance_score, "")
 
+    def test_fetch_new_results_keeps_paging_past_duplicates(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            data_dir = Path(temp_dir) / "data"
+            papers_dir = Path(temp_dir) / "papers"
+            write_papers(data_dir / "reading_list.csv", [sample_paper_with_id("duplicate")])
+
+            pages = [
+                [sample_paper_with_id("duplicate")],
+                [sample_paper_with_id("new-1")],
+                [sample_paper_with_id("new-2")],
+            ]
+            with patch("ai_paper_fetcher.cli.search_papers", side_effect=pages) as search:
+                exit_code = main(
+                    [
+                        "fetch",
+                        "--topic",
+                        "llm_evaluation",
+                        "--max-results",
+                        "2",
+                        "--new-results",
+                        "--max-pages",
+                        "3",
+                        "--no-download",
+                        "--no-citations",
+                        "--data-dir",
+                        str(data_dir),
+                        "--papers-dir",
+                        str(papers_dir),
+                    ]
+                )
+
+            papers = load_papers(data_dir / "reading_list.csv")
+
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(search.call_count, 3)
+        self.assertEqual({paper.paper_id for paper in papers}, {"duplicate", "new-1", "new-2"})
+
+    def test_fetch_without_new_results_stops_after_first_page(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            data_dir = Path(temp_dir) / "data"
+            papers_dir = Path(temp_dir) / "papers"
+            write_papers(data_dir / "reading_list.csv", [sample_paper_with_id("duplicate")])
+
+            with patch("ai_paper_fetcher.cli.search_papers", return_value=[sample_paper_with_id("duplicate")]) as search:
+                exit_code = main(
+                    [
+                        "fetch",
+                        "--topic",
+                        "llm_evaluation",
+                        "--max-results",
+                        "2",
+                        "--no-download",
+                        "--no-citations",
+                        "--data-dir",
+                        str(data_dir),
+                        "--papers-dir",
+                        str(papers_dir),
+                    ]
+                )
+
+            papers = load_papers(data_dir / "reading_list.csv")
+
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(search.call_count, 1)
+        self.assertEqual([paper.paper_id for paper in papers], ["duplicate"])
+
     def test_report_command_writes_markdown(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             data_dir = Path(temp_dir) / "data"
@@ -94,6 +183,8 @@ class CliTests(unittest.TestCase):
             data_dir = Path(temp_dir) / "data"
             papers_dir = Path(temp_dir) / "papers"
             weekly_dir = Path(temp_dir) / "weekly_reports"
+            config_path = Path(temp_dir) / "config.yaml"
+            write_one_topic_config(config_path)
 
             with patch("ai_paper_fetcher.cli.search_papers", return_value=[sample_paper()]):
                 exit_code = main(
@@ -103,6 +194,8 @@ class CliTests(unittest.TestCase):
                         "1",
                         "--no-download",
                         "--no-citations",
+                        "--config",
+                        str(config_path),
                         "--data-dir",
                         str(data_dir),
                         "--papers-dir",
@@ -120,6 +213,79 @@ class CliTests(unittest.TestCase):
             self.assertEqual(exit_code, 0)
             self.assertTrue(reading_list_report.exists())
             self.assertTrue(weekly_report.exists())
+
+    def test_weekly_uses_new_results_by_default(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            data_dir = Path(temp_dir) / "data"
+            papers_dir = Path(temp_dir) / "papers"
+            config_path = Path(temp_dir) / "config.yaml"
+            write_one_topic_config(config_path)
+            write_papers(data_dir / "reading_list.csv", [sample_paper_with_id("duplicate")])
+
+            pages = [
+                [sample_paper_with_id("duplicate")],
+                [sample_paper_with_id("new-1")],
+            ]
+            with patch("ai_paper_fetcher.cli.search_papers", side_effect=pages) as search:
+                exit_code = main(
+                    [
+                        "weekly",
+                        "--max-results",
+                        "1",
+                        "--max-pages",
+                        "2",
+                        "--no-download",
+                        "--no-citations",
+                        "--config",
+                        str(config_path),
+                        "--data-dir",
+                        str(data_dir),
+                        "--papers-dir",
+                        str(papers_dir),
+                        "--weekly-reports-dir",
+                        str(Path(temp_dir) / "weekly_reports"),
+                    ]
+                )
+
+            papers = load_papers(data_dir / "reading_list.csv")
+
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(search.call_count, 2)
+        self.assertEqual({paper.paper_id for paper in papers}, {"duplicate", "new-1"})
+
+    def test_weekly_can_disable_new_results(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            data_dir = Path(temp_dir) / "data"
+            papers_dir = Path(temp_dir) / "papers"
+            config_path = Path(temp_dir) / "config.yaml"
+            write_one_topic_config(config_path)
+            write_papers(data_dir / "reading_list.csv", [sample_paper_with_id("duplicate")])
+
+            with patch("ai_paper_fetcher.cli.search_papers", return_value=[sample_paper_with_id("duplicate")]) as search:
+                exit_code = main(
+                    [
+                        "weekly",
+                        "--max-results",
+                        "1",
+                        "--no-new-results",
+                        "--no-download",
+                        "--no-citations",
+                        "--config",
+                        str(config_path),
+                        "--data-dir",
+                        str(data_dir),
+                        "--papers-dir",
+                        str(papers_dir),
+                        "--weekly-reports-dir",
+                        str(Path(temp_dir) / "weekly_reports"),
+                    ]
+                )
+
+            papers = load_papers(data_dir / "reading_list.csv")
+
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(search.call_count, 1)
+        self.assertEqual([paper.paper_id for paper in papers], ["duplicate"])
 
 
 if __name__ == "__main__":
