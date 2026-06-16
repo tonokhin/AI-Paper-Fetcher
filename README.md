@@ -52,6 +52,14 @@ Download PDFs later for papers that were previously saved with `--no-download`:
 .venv/bin/ai-paper-fetcher download-missing
 ```
 
+Track your learning progress:
+
+```bash
+.venv/bin/ai-paper-fetcher progress next
+.venv/bin/ai-paper-fetcher progress update 2606.14027 --status reading --understanding 2 --next-action "Read the experiments section"
+.venv/bin/ai-paper-fetcher progress note 2606.14027 "The threat model is the key idea."
+```
+
 ## Outputs
 
 Generated outputs stay local and are ignored by git:
@@ -59,6 +67,7 @@ Generated outputs stay local and are ignored by git:
 ```text
 data/reading_list.csv
 data/reading_list.md
+data/learning_progress.json
 data/seen_papers.json
 papers/
 weekly_reports/YYYY-MM-DD.md
@@ -77,6 +86,7 @@ See [examples/sample_reading_list.md](examples/sample_reading_list.md) for a sma
 | `rank` | Re-rank the current CSV reading list. |
 | `report` | Regenerate the Markdown reading list. |
 | `download-missing` | Download PDFs for existing rows with missing local files. |
+| `progress` | Track reading status, understanding, notes, and next actions. |
 
 ## Examples
 
@@ -115,6 +125,23 @@ Hide progress messages:
 ```bash
 .venv/bin/ai-paper-fetcher weekly --quiet
 ```
+
+## Learning Progress
+
+Learning progress is stored separately from the generated reading list in `data/learning_progress.json`, so daily fetches, ranking, and report regeneration do not overwrite your personal notes.
+
+Useful commands:
+
+```bash
+.venv/bin/ai-paper-fetcher progress next --limit 5
+.venv/bin/ai-paper-fetcher progress list
+.venv/bin/ai-paper-fetcher progress show 2606.14027
+.venv/bin/ai-paper-fetcher progress update 2606.14027 --status skimmed --understanding 1
+.venv/bin/ai-paper-fetcher progress update 2606.14027 --minutes 25 --next-action "Summarize the method"
+.venv/bin/ai-paper-fetcher progress note 2606.14027 "Agent-induced data flow is the central security concern."
+```
+
+Supported statuses are `queued`, `skimmed`, `reading`, `understood`, and `archived`. Understanding is tracked on a `0` to `5` scale, where `5` means you can explain the paper to someone else. Markdown reports include saved progress under each paper.
 
 ## Configuration
 

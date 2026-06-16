@@ -453,6 +453,79 @@ papers:
         self.assertEqual(exit_code, 0)
         self.assertEqual(stderr.getvalue(), "")
 
+    def test_progress_update_note_and_report(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            data_dir = Path(temp_dir) / "data"
+            data_dir.mkdir()
+            write_papers(data_dir / "reading_list.csv", [sample_paper()])
+
+            update_exit = main(
+                [
+                    "progress",
+                    "update",
+                    "paper-1",
+                    "--status",
+                    "reading",
+                    "--understanding",
+                    "2",
+                    "--next-action",
+                    "Read the method.",
+                    "--data-dir",
+                    str(data_dir),
+                ]
+            )
+            note_exit = main(
+                [
+                    "progress",
+                    "note",
+                    "paper-1",
+                    "The problem statement is clear.",
+                    "--data-dir",
+                    str(data_dir),
+                ]
+            )
+            report_exit = main(["report", "--data-dir", str(data_dir)])
+
+            progress_file = data_dir / "learning_progress.json"
+            progress_exists = progress_file.exists()
+            report = (data_dir / "reading_list.md").read_text(encoding="utf-8")
+
+        self.assertEqual(update_exit, 0)
+        self.assertEqual(note_exit, 0)
+        self.assertEqual(report_exit, 0)
+        self.assertTrue(progress_exists)
+        self.assertIn("- Learning status: reading", report)
+        self.assertIn("- Understanding: 2/5", report)
+        self.assertIn("- Next action: Read the method.", report)
+        self.assertIn("- Latest note: The problem statement is clear.", report)
+
+    def test_progress_next_lists_unfinished_papers(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            data_dir = Path(temp_dir) / "data"
+            data_dir.mkdir()
+            write_papers(
+                data_dir / "reading_list.csv",
+                [sample_paper_with_id("paper-1"), sample_paper_with_id("paper-2")],
+            )
+            main(
+                [
+                    "progress",
+                    "update",
+                    "paper-1",
+                    "--status",
+                    "understood",
+                    "--data-dir",
+                    str(data_dir),
+                ]
+            )
+
+            with patch("sys.stdout", new_callable=StringIO) as stdout:
+                exit_code = main(["progress", "next", "--data-dir", str(data_dir)])
+
+        self.assertEqual(exit_code, 0)
+        self.assertNotIn("paper-1:", stdout.getvalue())
+        self.assertIn("paper-2:", stdout.getvalue())
+
 
 if __name__ == "__main__":
     unittest.main()

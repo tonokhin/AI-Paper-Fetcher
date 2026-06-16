@@ -13,6 +13,16 @@ from .config import FoundationalPaperConfig, TopicConfig, load_foundational_pape
 from .downloader import download_pdf, mark_downloaded
 from .filtering import filter_papers
 from .models import Paper
+from .progress import (
+    STATUSES,
+    LearningProgress,
+    find_next_papers,
+    format_progress,
+    load_progress,
+    progress_path,
+    save_progress,
+    update_progress,
+)
 from .ranking import rank_papers
 from .reporting import write_markdown_report
 from .storage import (
@@ -63,6 +73,13 @@ def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
 
+    if args.command == "progress":
+        try:
+            return run_progress(args, parser)
+        except ValueError as error:
+            print(f"Progress error: {error}", file=sys.stderr)
+            return 1
+
     if args.command == "download-missing":
         summary = download_missing_pdfs(
             Path(args.data_dir) / "reading_list.csv",
@@ -103,7 +120,7 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "report":
         output_path = Path(args.report_path) if args.report_path else Path(args.data_dir) / "reading_list.md"
-        count = generate_report(Path(args.data_dir) / "reading_list.csv", output_path)
+        count = generate_report(Path(args.data_dir) / "reading_list.csv", output_path, progress_path(Path(args.data_dir)))
         print(f"Generated report for {count} papers")
         print(f"Saved report to {output_path.as_posix()}")
         return 0
@@ -161,9 +178,17 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "command",
         nargs="?",
-        choices=["fetch", "citations", "rank", "report", "weekly", "foundations", "download-missing"],
+        choices=["fetch", "citations", "rank", "report", "weekly", "foundations", "download-missing", "progress"],
         help="Command to run.",
     )
+    parser.add_argument(
+        "progress_action",
+        nargs="?",
+        choices=["list", "next", "show", "update", "note"],
+        help="Progress action to run when command is progress.",
+    )
+    parser.add_argument("progress_paper_id", nargs="?", help="Paper ID for progress show, update, or note.")
+    parser.add_argument("progress_text", nargs="*", help="Note text for progress note.")
     source = parser.add_mutually_exclusive_group()
     source.add_argument("--topic", help="Topic or keyword query to search on arXiv.")
     source.add_argument("--config-topic", help="Named topic from config.yaml.")
@@ -224,6 +249,12 @@ def build_parser() -> argparse.ArgumentParser:
         help="Quick weekly mode: max-results 3, max-pages 2, no PDF downloads, no citation lookups.",
     )
     parser.add_argument("--quiet", action="store_true", help="Hide progress messages.")
+    parser.add_argument("--status", choices=STATUSES, help="Learning status for progress update.")
+    parser.add_argument("--understanding", type=int, help="Understanding level from 0 to 5.")
+    parser.add_argument("--interest", help="Personal interest label, such as high, medium, or low.")
+    parser.add_argument("--minutes", type=int, help="Minutes to add to this paper's time spent.")
+    parser.add_argument("--next-action", help="Next learning action for this paper.")
+    parser.add_argument("--limit", type=int, default=5, help="Maximum items for progress list or next.")
     return parser
 
 
@@ -362,10 +393,119 @@ def rank_existing_reading_list(csv_path: Path, config_path: Path) -> int:
     return len(ranked)
 
 
-def generate_report(csv_path: Path, output_path: Path) -> int:
+def generate_report(csv_path: Path, output_path: Path, progress_file: Path | None = None) -> int:
     papers = load_papers(csv_path)
-    write_markdown_report(papers, output_path)
+    progress = load_progress(progress_file) if progress_file else {}
+    write_markdown_report(papers, output_path, progress)
     return len(papers)
+
+
+def run_progress(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int:
+    action = args.progress_action
+    if not action:
+        parser.error("progress requires one of: list, next, show, update, note")
+
+    data_dir = Path(args.data_dir)
+    csv_path = data_dir / "reading_list.csv"
+    progress_file = progress_path(data_dir)
+    progress = load_progress(progress_file)
+
+    if action == "list":
+        print_progress_list(progress, limit=args.limit)
+        return 0
+
+    papers = load_papers(csv_path)
+    papers_by_id = {paper.paper_id: paper for paper in papers}
+
+    if action == "next":
+        print_next_papers(papers, progress, limit=args.limit)
+        return 0
+
+    paper_id = args.progress_paper_id
+    if not paper_id:
+        parser.error(f"progress {action} requires a paper ID")
+
+    if action == "show":
+        print_progress_item(paper_id, progress.get(paper_id), papers_by_id.get(paper_id))
+        return 0
+
+    if action == "note":
+        note = " ".join(args.progress_text).strip()
+        if not note:
+            parser.error("progress note requires note text")
+        item = update_progress(progress, paper_id, note=note)
+        save_progress(progress_file, progress)
+        print(f"Added note for {paper_id}")
+        print_progress_item(paper_id, item, papers_by_id.get(paper_id))
+        return 0
+
+    if action == "update":
+        item = update_progress(
+            progress,
+            paper_id,
+            status=args.status,
+            understanding=args.understanding,
+            interest=args.interest,
+            time_spent_minutes=args.minutes,
+            next_action=args.next_action,
+        )
+        save_progress(progress_file, progress)
+        print(f"Updated progress for {paper_id}")
+        print_progress_item(paper_id, item, papers_by_id.get(paper_id))
+        return 0
+
+    parser.error(f"Unknown progress action: {action}")
+    return 2
+
+
+def print_progress_list(progress: dict[str, LearningProgress], limit: int = 5) -> None:
+    active = [
+        item
+        for item in progress.values()
+        if item.status not in {"understood", "archived"}
+    ]
+    active.sort(key=lambda item: (item.status != "reading", item.last_touched), reverse=False)
+    if not active:
+        print("No active learning progress yet.")
+        return
+    for item in active[: max(1, limit)]:
+        print(f"{item.paper_id}: {item.status}, understanding {item.understanding}/5")
+        if item.next_action:
+            print(f"  Next: {item.next_action}")
+
+
+def print_next_papers(
+    papers: list[Paper],
+    progress: dict[str, LearningProgress],
+    limit: int = 5,
+) -> None:
+    next_papers = find_next_papers(papers, progress, limit)
+    if not next_papers:
+        print("No unread papers found.")
+        return
+    for paper in next_papers:
+        item = progress.get(paper.paper_id)
+        status = item.status if item else "queued"
+        understanding = item.understanding if item else 0
+        print(f"{paper.paper_id}: {paper.title}")
+        print(f"  Status: {status}; understanding {understanding}/5")
+        if paper.local_pdf_path:
+            print(f"  PDF: {paper.local_pdf_path}")
+
+
+def print_progress_item(
+    paper_id: str,
+    item: LearningProgress | None,
+    paper: Paper | None = None,
+) -> None:
+    if paper:
+        print(paper.title)
+    print(f"Paper ID: {paper_id}")
+    if not item:
+        print("No progress recorded.")
+        return
+    for line in format_progress(item):
+        print(line)
 
 
 def run_weekly(args: argparse.Namespace) -> WeeklyResult:
@@ -374,6 +514,7 @@ def run_weekly(args: argparse.Namespace) -> WeeklyResult:
     data_dir = Path(args.data_dir)
     reading_list_path = data_dir / "reading_list.csv"
     reading_list_report_path = data_dir / "reading_list.md"
+    learning_progress_path = progress_path(data_dir)
     weekly_report_path = weekly_report_file(
         Path(args.weekly_reports_dir),
         args.report_date,
@@ -397,9 +538,9 @@ def run_weekly(args: argparse.Namespace) -> WeeklyResult:
     progress.log("Starting weekly workflow...")
     summary = run_fetch(fetch_args, argparse.ArgumentParser(prog="ai-paper-fetcher weekly"))
     progress.log("Generating reading list report...")
-    report_count = generate_report(reading_list_path, reading_list_report_path)
+    report_count = generate_report(reading_list_path, reading_list_report_path, learning_progress_path)
     progress.log("Generating weekly report...")
-    generate_report(reading_list_path, weekly_report_path)
+    generate_report(reading_list_path, weekly_report_path, learning_progress_path)
 
     return WeeklyResult(
         summary=summary,

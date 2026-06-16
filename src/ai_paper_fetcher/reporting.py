@@ -4,17 +4,26 @@ from collections import defaultdict
 from pathlib import Path
 
 from .models import Paper
+from .progress import LearningProgress
 
 
 PRIORITIES = ["High", "Medium", "Low", ""]
 
 
-def write_markdown_report(papers: list[Paper], output_path: Path) -> None:
+def write_markdown_report(
+    papers: list[Paper],
+    output_path: Path,
+    progress: dict[str, LearningProgress] | None = None,
+) -> None:
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    output_path.write_text(render_markdown_report(papers), encoding="utf-8")
+    output_path.write_text(render_markdown_report(papers, progress), encoding="utf-8")
 
 
-def render_markdown_report(papers: list[Paper]) -> str:
+def render_markdown_report(
+    papers: list[Paper],
+    progress: dict[str, LearningProgress] | None = None,
+) -> str:
+    progress = progress or {}
     lines = [
         "# AI Paper Reading List",
         "",
@@ -39,7 +48,7 @@ def render_markdown_report(papers: list[Paper]) -> str:
         for topic, topic_papers in by_topic.items():
             lines.extend([f"### {topic}", ""])
             for paper in topic_papers:
-                lines.extend(_paper_lines(paper))
+                lines.extend(_paper_lines(paper, progress.get(paper.paper_id)))
 
     return "\n".join(lines).rstrip() + "\n"
 
@@ -58,7 +67,7 @@ def _group_by_topic(papers: list[Paper]) -> dict[str, list[Paper]]:
     return dict(sorted(grouped.items(), key=lambda item: item[0]))
 
 
-def _paper_lines(paper: Paper) -> list[str]:
+def _paper_lines(paper: Paper, progress: LearningProgress | None = None) -> list[str]:
     lines = [
         f"#### {_escape_markdown_heading(paper.title)}",
         "",
@@ -75,6 +84,9 @@ def _paper_lines(paper: Paper) -> list[str]:
     if paper.matched_keywords:
         lines.append(f"- Matched keywords: {paper.matched_keywords}")
 
+    if progress:
+        lines.extend(_progress_lines(progress))
+
     abstract = _abstract_preview(paper.abstract)
     if abstract:
         lines.append(f"- Abstract: {abstract}")
@@ -83,6 +95,24 @@ def _paper_lines(paper: Paper) -> list[str]:
         lines.append(f"- {label}: {url}")
 
     lines.append("")
+    return lines
+
+
+def _progress_lines(progress: LearningProgress) -> list[str]:
+    lines = [
+        f"- Learning status: {progress.status}",
+        f"- Understanding: {progress.understanding}/5",
+    ]
+    if progress.interest:
+        lines.append(f"- Interest: {progress.interest}")
+    if progress.time_spent_minutes:
+        lines.append(f"- Time spent: {progress.time_spent_minutes} minutes")
+    if progress.last_touched:
+        lines.append(f"- Last touched: {progress.last_touched}")
+    if progress.next_action:
+        lines.append(f"- Next action: {progress.next_action}")
+    if progress.notes:
+        lines.append(f"- Latest note: {progress.notes[-1]}")
     return lines
 
 

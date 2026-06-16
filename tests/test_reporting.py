@@ -3,6 +3,7 @@ import tempfile
 import unittest
 
 from ai_paper_fetcher.models import Paper
+from ai_paper_fetcher.progress import LearningProgress
 from ai_paper_fetcher.reporting import render_markdown_report, write_markdown_report
 
 
@@ -56,6 +57,29 @@ class ReportingTests(unittest.TestCase):
             content = output_path.read_text(encoding="utf-8")
 
         self.assertIn("A Benchmark for LLM Evaluation", content)
+
+    def test_render_markdown_report_includes_learning_progress(self):
+        progress = {
+            "paper-1": LearningProgress(
+                paper_id="paper-1",
+                status="reading",
+                understanding=3,
+                interest="high",
+                time_spent_minutes=40,
+                last_touched="2026-06-16",
+                notes=["Re-read the evaluation section."],
+                next_action="Explain the method in my own words.",
+            )
+        }
+
+        markdown = render_markdown_report([paper()], progress)
+
+        self.assertIn("- Learning status: reading", markdown)
+        self.assertIn("- Understanding: 3/5", markdown)
+        self.assertIn("- Interest: high", markdown)
+        self.assertIn("- Time spent: 40 minutes", markdown)
+        self.assertIn("- Next action: Explain the method in my own words.", markdown)
+        self.assertIn("- Latest note: Re-read the evaluation section.", markdown)
 
 
 if __name__ == "__main__":
