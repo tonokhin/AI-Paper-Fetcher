@@ -5,6 +5,7 @@ __pycache__/
 
 data/*.csv
 data/*.json
+data/*.md
 papers/
 weekly_reports/*.md
 logs/
