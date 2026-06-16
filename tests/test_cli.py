@@ -526,6 +526,51 @@ papers:
         self.assertNotIn("paper-1:", stdout.getvalue())
         self.assertIn("paper-2:", stdout.getvalue())
 
+    def test_next_command_recommends_by_progress_and_citations(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            data_dir = Path(temp_dir) / "data"
+            data_dir.mkdir()
+            finished = sample_paper_with_id("finished")
+            finished.relevance_score = "100"
+            finished.citation_count = "1000"
+            current = sample_paper_with_id("current")
+            current.relevance_score = "12"
+            current.citation_count = "25"
+            write_papers(data_dir / "reading_list.csv", [finished, current])
+            main(
+                [
+                    "progress",
+                    "update",
+                    "finished",
+                    "--status",
+                    "understood",
+                    "--data-dir",
+                    str(data_dir),
+                ]
+            )
+            main(
+                [
+                    "progress",
+                    "update",
+                    "current",
+                    "--status",
+                    "reading",
+                    "--understanding",
+                    "2",
+                    "--data-dir",
+                    str(data_dir),
+                ]
+            )
+
+            with patch("sys.stdout", new_callable=StringIO) as stdout:
+                exit_code = main(["next", "--data-dir", str(data_dir)])
+
+        self.assertEqual(exit_code, 0)
+        self.assertIn("current:", stdout.getvalue())
+        self.assertNotIn("finished:", stdout.getvalue())
+        self.assertIn("Citation graph signal: 25 citations", stdout.getvalue())
+        self.assertIn("currently reading", stdout.getvalue())
+
 
 if __name__ == "__main__":
     unittest.main()

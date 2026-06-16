@@ -24,6 +24,7 @@ from .progress import (
     update_progress,
 )
 from .ranking import rank_papers
+from .recommendations import Recommendation, recommend_next_papers
 from .reporting import write_markdown_report
 from .storage import (
     append_papers,
@@ -79,6 +80,9 @@ def main(argv: list[str] | None = None) -> int:
         except ValueError as error:
             print(f"Progress error: {error}", file=sys.stderr)
             return 1
+
+    if args.command == "next":
+        return run_next(args)
 
     if args.command == "download-missing":
         summary = download_missing_pdfs(
@@ -178,7 +182,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "command",
         nargs="?",
-        choices=["fetch", "citations", "rank", "report", "weekly", "foundations", "download-missing", "progress"],
+        choices=["fetch", "citations", "rank", "report", "weekly", "foundations", "download-missing", "progress", "next"],
         help="Command to run.",
     )
     parser.add_argument(
@@ -254,7 +258,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--interest", help="Personal interest label, such as high, medium, or low.")
     parser.add_argument("--minutes", type=int, help="Minutes to add to this paper's time spent.")
     parser.add_argument("--next-action", help="Next learning action for this paper.")
-    parser.add_argument("--limit", type=int, default=5, help="Maximum items for progress list or next.")
+    parser.add_argument("--limit", type=int, help="Maximum items for progress list or next.")
     return parser
 
 
@@ -411,14 +415,14 @@ def run_progress(args: argparse.Namespace, parser: argparse.ArgumentParser) -> i
     progress = load_progress(progress_file)
 
     if action == "list":
-        print_progress_list(progress, limit=args.limit)
+        print_progress_list(progress, limit=args.limit or 5)
         return 0
 
     papers = load_papers(csv_path)
     papers_by_id = {paper.paper_id: paper for paper in papers}
 
     if action == "next":
-        print_next_papers(papers, progress, limit=args.limit)
+        print_next_papers(papers, progress, limit=args.limit or 5)
         return 0
 
     paper_id = args.progress_paper_id
@@ -456,6 +460,46 @@ def run_progress(args: argparse.Namespace, parser: argparse.ArgumentParser) -> i
 
     parser.error(f"Unknown progress action: {action}")
     return 2
+
+
+def run_next(args: argparse.Namespace) -> int:
+    data_dir = Path(args.data_dir)
+    papers = load_papers(data_dir / "reading_list.csv")
+    progress = load_progress(progress_path(data_dir))
+    recommendations = recommend_next_papers(papers, progress, limit=args.limit or 1)
+
+    if not recommendations:
+        print("No unread papers found.")
+        return 0
+
+    for index, recommendation in enumerate(recommendations, start=1):
+        print_next_recommendation(recommendation, index=index, show_rank=len(recommendations) > 1)
+    return 0
+
+
+def print_next_recommendation(
+    recommendation: Recommendation,
+    *,
+    index: int = 1,
+    show_rank: bool = False,
+) -> None:
+    paper = recommendation.paper
+    prefix = f"{index}. " if show_rank else ""
+    print(f"{prefix}{paper.paper_id}: {paper.title}")
+    print(f"  Recommendation score: {recommendation.score:.1f}")
+    if recommendation.progress:
+        print(f"  Progress: {recommendation.progress.status}, understanding {recommendation.progress.understanding}/5")
+    else:
+        print("  Progress: not started")
+    if paper.citation_count:
+        print(f"  Citation graph signal: {paper.citation_count} citations")
+    elif paper.openalex_id:
+        print("  Citation graph signal: OpenAlex metadata available")
+    else:
+        print("  Citation graph signal: no citation metadata yet")
+    if paper.local_pdf_path:
+        print(f"  PDF: {paper.local_pdf_path}")
+    print(f"  Why: {'; '.join(recommendation.reasons)}")
 
 
 def print_progress_list(progress: dict[str, LearningProgress], limit: int = 5) -> None:

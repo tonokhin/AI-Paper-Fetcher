@@ -55,6 +55,7 @@ Download PDFs later for papers that were previously saved with `--no-download`:
 Track your learning progress:
 
 ```bash
+.venv/bin/ai-paper-fetcher next
 .venv/bin/ai-paper-fetcher progress next
 .venv/bin/ai-paper-fetcher progress update 2606.14027 --status reading --understanding 2 --next-action "Read the experiments section"
 .venv/bin/ai-paper-fetcher progress note 2606.14027 "The threat model is the key idea."
@@ -87,6 +88,7 @@ See [examples/sample_reading_list.md](examples/sample_reading_list.md) for a sma
 | `report` | Regenerate the Markdown reading list. |
 | `download-missing` | Download PDFs for existing rows with missing local files. |
 | `progress` | Track reading status, understanding, notes, and next actions. |
+| `next` | Recommend the next paper to read from progress, ranking, and citation signals. |
 
 ## Examples
 
@@ -133,6 +135,8 @@ Learning progress is stored separately from the generated reading list in `data/
 Useful commands:
 
 ```bash
+.venv/bin/ai-paper-fetcher next
+.venv/bin/ai-paper-fetcher next --limit 3
 .venv/bin/ai-paper-fetcher progress next --limit 5
 .venv/bin/ai-paper-fetcher progress list
 .venv/bin/ai-paper-fetcher progress show 2606.14027
@@ -142,6 +146,8 @@ Useful commands:
 ```
 
 Supported statuses are `queued`, `skimmed`, `reading`, `understood`, and `archived`. Understanding is tracked on a `0` to `5` scale, where `5` means you can explain the paper to someone else. Markdown reports include saved progress under each paper.
+
+The top-level `next` command skips papers marked `understood` or `archived`, boosts papers already in progress, and uses relevance score, citation count/OpenAlex metadata, foundational status, and local PDF availability to explain why a paper is recommended.
 
 ## Configuration
 
