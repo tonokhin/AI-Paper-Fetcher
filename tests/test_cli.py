@@ -499,6 +499,41 @@ papers:
         self.assertIn("- Next action: Read the method.", report)
         self.assertIn("- Latest note: The problem statement is clear.", report)
 
+    def test_progress_understood_moves_local_pdf_to_read_folder(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            data_dir = Path(temp_dir) / "data"
+            papers_dir = Path(temp_dir) / "papers"
+            pdf_path = papers_dir / "llm_evaluation" / "paper.pdf"
+            pdf_path.parent.mkdir(parents=True)
+            pdf_path.write_text("pdf", encoding="utf-8")
+            item = sample_paper()
+            item.local_pdf_path = pdf_path.as_posix()
+            write_papers(data_dir / "reading_list.csv", [item])
+
+            exit_code = main(
+                [
+                    "progress",
+                    "update",
+                    "paper-1",
+                    "--status",
+                    "understood",
+                    "--data-dir",
+                    str(data_dir),
+                    "--papers-dir",
+                    str(papers_dir),
+                ]
+            )
+
+            papers = load_papers(data_dir / "reading_list.csv")
+            moved_path = papers_dir / "read" / "paper.pdf"
+            source_exists = pdf_path.exists()
+            moved_exists = moved_path.exists()
+
+        self.assertEqual(exit_code, 0)
+        self.assertFalse(source_exists)
+        self.assertTrue(moved_exists)
+        self.assertEqual(papers[0].local_pdf_path, moved_path.as_posix())
+
     def test_progress_next_lists_unfinished_papers(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             data_dir = Path(temp_dir) / "data"

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import shutil
 import sys
 from datetime import date
 from dataclasses import dataclass
@@ -453,13 +454,53 @@ def run_progress(args: argparse.Namespace, parser: argparse.ArgumentParser) -> i
             time_spent_minutes=args.minutes,
             next_action=args.next_action,
         )
+        moved_pdf = None
+        paper = papers_by_id.get(paper_id)
+        if item.status == "understood" and paper is not None:
+            moved_pdf = move_completed_pdf(paper, Path(args.papers_dir))
+            if moved_pdf is not None:
+                write_papers(csv_path, papers)
         save_progress(progress_file, progress)
         print(f"Updated progress for {paper_id}")
+        if moved_pdf is not None:
+            print(f"Moved PDF to {moved_pdf.as_posix()}")
         print_progress_item(paper_id, item, papers_by_id.get(paper_id))
         return 0
 
     parser.error(f"Unknown progress action: {action}")
     return 2
+
+
+def move_completed_pdf(paper: Paper, papers_dir: Path) -> Path | None:
+    if not paper.local_pdf_path:
+        return None
+
+    source = Path(paper.local_pdf_path)
+    if not source.exists():
+        return None
+
+    read_dir = papers_dir / "read"
+    read_dir.mkdir(parents=True, exist_ok=True)
+
+    if source.resolve().parent == read_dir.resolve():
+        return source
+
+    destination = unique_destination(read_dir / source.name)
+    shutil.move(source.as_posix(), destination.as_posix())
+    paper.local_pdf_path = destination.as_posix()
+    return destination
+
+
+def unique_destination(path: Path) -> Path:
+    if not path.exists():
+        return path
+
+    for index in range(2, 10_000):
+        candidate = path.with_name(f"{path.stem}-{index}{path.suffix}")
+        if not candidate.exists():
+            return candidate
+
+    raise ValueError(f"Could not find an available destination for {path}")
 
 
 def run_next(args: argparse.Namespace) -> int:

@@ -142,10 +142,13 @@ Useful commands:
 .venv/bin/ai-paper-fetcher progress show 2606.14027
 .venv/bin/ai-paper-fetcher progress update 2606.14027 --status skimmed --understanding 1
 .venv/bin/ai-paper-fetcher progress update 2606.14027 --minutes 25 --next-action "Summarize the method"
+.venv/bin/ai-paper-fetcher progress update 2606.14027 --status understood
 .venv/bin/ai-paper-fetcher progress note 2606.14027 "Agent-induced data flow is the central security concern."
 ```
 
 Supported statuses are `queued`, `skimmed`, `reading`, `understood`, and `archived`. Understanding is tracked on a `0` to `5` scale, where `5` means you can explain the paper to someone else. Markdown reports include saved progress under each paper.
+
+When a paper with a local PDF is marked `understood`, the PDF is moved into `papers/read/` and the reading-list CSV is updated with the new path. This keeps completed papers out of the active topic folders without losing the file link.
 
 The top-level `next` command skips papers marked `understood` or `archived`, boosts papers already in progress, and uses relevance score, citation count/OpenAlex metadata, foundational status, and local PDF availability to explain why a paper is recommended.
 
