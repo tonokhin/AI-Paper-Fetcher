@@ -36,6 +36,7 @@ from .storage import (
     save_seen,
     write_papers,
 )
+from .text import slugify
 
 
 class Progress:
@@ -479,7 +480,7 @@ def move_completed_pdf(paper: Paper, papers_dir: Path) -> Path | None:
     if not source.exists():
         return None
 
-    read_dir = papers_dir / "read"
+    read_dir = papers_dir / "read" / slugify(paper.topic)
     read_dir.mkdir(parents=True, exist_ok=True)
 
     if source.resolve().parent == read_dir.resolve():

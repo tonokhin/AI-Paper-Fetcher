@@ -35,3 +35,65 @@ topics:
       - cs.AI
       - cs.LG
       - cs.CL
+
+  rag_and_grounding:
+    query: "retrieval augmented generation grounding"
+    include_keywords:
+      - retrieval
+      - grounding
+      - RAG
+      - hallucination
+      - factuality
+    exclude_keywords:
+      - survey
+    categories:
+      - cs.CL
+      - cs.AI
+      - cs.IR
+      - cs.LG
+
+  multimodal_reasoning:
+    query: "multimodal reasoning vision language model"
+    include_keywords:
+      - multimodal
+      - vision-language
+      - reasoning
+      - benchmark
+    exclude_keywords:
+      - survey
+    categories:
+      - cs.CV
+      - cs.CL
+      - cs.AI
+      - cs.LG
+
+  llm_training_and_alignment:
+    query: "language model post-training alignment reinforcement learning preference optimization"
+    include_keywords:
+      - post-training
+      - alignment
+      - reinforcement learning
+      - preference
+      - instruction tuning
+    exclude_keywords:
+      - survey
+    categories:
+      - cs.CL
+      - cs.AI
+      - cs.LG
+
+  ai_security:
+    query: "AI agent security prompt injection tool use"
+    include_keywords:
+      - security
+      - prompt injection
+      - agent
+      - tool use
+      - sandbox
+    exclude_keywords:
+      - survey
+    categories:
+      - cs.CR
+      - cs.AI
+      - cs.CL
+      - cs.SE

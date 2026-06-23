@@ -499,7 +499,7 @@ papers:
         self.assertIn("- Next action: Read the method.", report)
         self.assertIn("- Latest note: The problem statement is clear.", report)
 
-    def test_progress_understood_moves_local_pdf_to_read_folder(self):
+    def test_progress_understood_moves_local_pdf_to_topic_read_folder(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             data_dir = Path(temp_dir) / "data"
             papers_dir = Path(temp_dir) / "papers"
@@ -525,7 +525,7 @@ papers:
             )
 
             papers = load_papers(data_dir / "reading_list.csv")
-            moved_path = papers_dir / "read" / "paper.pdf"
+            moved_path = papers_dir / "read" / "llm_evaluation" / "paper.pdf"
             source_exists = pdf_path.exists()
             moved_exists = moved_path.exists()
 
