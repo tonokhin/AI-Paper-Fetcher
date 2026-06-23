@@ -1,3 +1,19 @@
+tracks:
+  ai:
+    topics:
+      - llm_evaluation
+      - ai_agents
+      - interpretability
+      - rag_and_grounding
+      - multimodal_reasoning
+      - llm_training_and_alignment
+      - ai_security
+
+  fundamentals:
+    topics:
+      - algorithms
+      - mathematics_for_ai
+
 topics:
   llm_evaluation:
     query: "LLM evaluation"
@@ -97,3 +113,34 @@ topics:
       - cs.AI
       - cs.CL
       - cs.SE
+
+  algorithms:
+    query: "algorithm"
+    include_keywords:
+      - algorithm
+      - optimization
+      - complexity
+      - learning
+    exclude_keywords:
+      - survey
+    categories:
+      - cs.DS
+      - cs.CC
+      - cs.LG
+      - math.OC
+
+  mathematics_for_ai:
+    query: "optimization"
+    include_keywords:
+      - optimization
+      - probability
+      - theorem
+      - convergence
+      - learning
+    exclude_keywords:
+      - survey
+    categories:
+      - math.OC
+      - math.ST
+      - stat.ML
+      - cs.LG

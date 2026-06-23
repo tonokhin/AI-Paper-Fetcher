@@ -10,7 +10,7 @@ from urllib.error import URLError
 
 from .arxiv_client import fetch_paper_by_id, search_papers
 from .citations import enrich_citations
-from .config import FoundationalPaperConfig, TopicConfig, load_foundational_papers, load_topics
+from .config import FoundationalPaperConfig, TopicConfig, load_foundational_papers, load_topics, load_tracks
 from .downloader import download_pdf, mark_downloaded
 from .filtering import filter_papers
 from .models import Paper
@@ -212,6 +212,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--max-pages", type=int, default=5, help="Maximum arXiv pages to inspect with --new-results.")
     parser.add_argument("--config", default="config.yaml", help="Path to topic config YAML.")
+    parser.add_argument("--track", help="Named track from config.yaml to limit fetch, weekly, or next.")
     parser.add_argument(
         "--foundations-config",
         default="foundational_papers.yaml",
@@ -457,8 +458,9 @@ def run_progress(args: argparse.Namespace, parser: argparse.ArgumentParser) -> i
         )
         moved_pdf = None
         paper = papers_by_id.get(paper_id)
-        if item.status == "understood" and paper is not None:
-            moved_pdf = move_completed_pdf(paper, Path(args.papers_dir))
+        shelf = shelf_for_status(item.status)
+        if shelf is not None and paper is not None:
+            moved_pdf = move_pdf_to_status_shelf(paper, Path(args.papers_dir), shelf)
             if moved_pdf is not None:
                 write_papers(csv_path, papers)
         save_progress(progress_file, progress)
@@ -472,7 +474,15 @@ def run_progress(args: argparse.Namespace, parser: argparse.ArgumentParser) -> i
     return 2
 
 
-def move_completed_pdf(paper: Paper, papers_dir: Path) -> Path | None:
+def shelf_for_status(status: str) -> str | None:
+    if status == "skimmed":
+        return "skimmed"
+    if status == "understood":
+        return "read"
+    return None
+
+
+def move_pdf_to_status_shelf(paper: Paper, papers_dir: Path, shelf: str) -> Path | None:
     if not paper.local_pdf_path:
         return None
 
@@ -480,13 +490,13 @@ def move_completed_pdf(paper: Paper, papers_dir: Path) -> Path | None:
     if not source.exists():
         return None
 
-    read_dir = papers_dir / "read" / slugify(paper.topic)
-    read_dir.mkdir(parents=True, exist_ok=True)
+    status_dir = papers_dir / shelf / slugify(paper.topic)
+    status_dir.mkdir(parents=True, exist_ok=True)
 
-    if source.resolve().parent == read_dir.resolve():
+    if source.resolve().parent == status_dir.resolve():
         return source
 
-    destination = unique_destination(read_dir / source.name)
+    destination = unique_destination(status_dir / source.name)
     shutil.move(source.as_posix(), destination.as_posix())
     paper.local_pdf_path = destination.as_posix()
     return destination
@@ -504,9 +514,32 @@ def unique_destination(path: Path) -> Path:
     raise ValueError(f"Could not find an available destination for {path}")
 
 
+def filter_papers_by_track(papers: list[Paper], config_path: Path, track_name: str) -> list[Paper]:
+    topic_names = set(topic_names_for_track(config_path, track_name))
+    return [paper for paper in papers if paper.topic in topic_names]
+
+
+def topic_names_for_track(config_path: Path, track_name: str) -> list[str]:
+    tracks = load_tracks(config_path)
+    if track_name not in tracks:
+        raise ValueError(f"Unknown track: {track_name}")
+
+    topics = load_topics(config_path)
+    missing = [topic for topic in tracks[track_name].topics if topic not in topics]
+    if missing:
+        raise ValueError(f"Track '{track_name}' references unknown topics: {', '.join(missing)}")
+    return tracks[track_name].topics
+
+
 def run_next(args: argparse.Namespace) -> int:
     data_dir = Path(args.data_dir)
     papers = load_papers(data_dir / "reading_list.csv")
+    if args.track:
+        try:
+            papers = filter_papers_by_track(papers, Path(args.config), args.track)
+        except ValueError as error:
+            print(f"Track error: {error}", file=sys.stderr)
+            return 1
     progress = load_progress(progress_path(data_dir))
     recommendations = recommend_next_papers(papers, progress, limit=args.limit or 1)
 
@@ -614,6 +647,7 @@ def run_weekly(args: argparse.Namespace) -> WeeklyResult:
         new_results=not args.no_new_results,
         max_pages=args.max_pages,
         config=args.config,
+        track=args.track,
         data_dir=args.data_dir,
         papers_dir=args.papers_dir,
         no_download=args.no_download,
@@ -697,6 +731,12 @@ def run_fetch(args: argparse.Namespace, parser: argparse.ArgumentParser) -> Fetc
 
     if args.fetch_all:
         topics = load_topics(Path(args.config))
+        if args.track:
+            try:
+                track_topics = set(topic_names_for_track(Path(args.config), args.track))
+            except ValueError as error:
+                parser.error(str(error))
+            topics = {name: topic for name, topic in topics.items() if name in track_topics}
         summary = FetchSummary()
         for topic_config in topics.values():
             progress.log(f"Starting topic: {topic_config.name}")

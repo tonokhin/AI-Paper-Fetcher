@@ -25,6 +25,12 @@ class FoundationalPaperConfig:
     note: str = ""
 
 
+@dataclass
+class TrackConfig:
+    name: str
+    topics: list[str] = field(default_factory=list)
+
+
 def load_topics(config_path: Path) -> dict[str, TopicConfig]:
     if not config_path.exists():
         raise FileNotFoundError(f"Config file not found: {config_path}")
@@ -39,6 +45,23 @@ def load_topics(config_path: Path) -> dict[str, TopicConfig]:
     return {
         name: _topic_from_mapping(name, value)
         for name, value in topics.items()
+    }
+
+
+def load_tracks(config_path: Path) -> dict[str, TrackConfig]:
+    if not config_path.exists():
+        raise FileNotFoundError(f"Config file not found: {config_path}")
+
+    with config_path.open("r", encoding="utf-8") as handle:
+        raw = yaml.safe_load(handle) or {}
+
+    tracks = raw.get("tracks", {})
+    if not isinstance(tracks, dict):
+        raise ValueError("Config field 'tracks' must be a mapping.")
+
+    return {
+        name: _track_from_mapping(name, value)
+        for name, value in tracks.items()
     }
 
 
@@ -72,6 +95,19 @@ def _topic_from_mapping(name: str, value: Any) -> TopicConfig:
         categories=_string_list(value.get("categories", []), name, "categories"),
         published_after=_optional_string(value.get("published_after"), name, "published_after"),
     )
+
+
+def _track_from_mapping(name: str, value: Any) -> TrackConfig:
+    if isinstance(value, list):
+        topics = _string_list(value, name, "tracks")
+    elif isinstance(value, dict):
+        topics = _string_list(value.get("topics", []), name, "topics")
+    else:
+        raise ValueError(f"Track '{name}' must be a list or mapping.")
+
+    if not topics:
+        raise ValueError(f"Track '{name}' must contain at least one topic.")
+    return TrackConfig(name=name, topics=topics)
 
 
 def _foundational_paper_from_mapping(index: int, value: Any) -> FoundationalPaperConfig:

@@ -34,6 +34,13 @@ Run the weekly research feed:
 .venv/bin/ai-paper-fetcher weekly --max-results 10
 ```
 
+Run only one learning track:
+
+```bash
+.venv/bin/ai-paper-fetcher weekly --track ai --max-results 5
+.venv/bin/ai-paper-fetcher weekly --track fundamentals --max-results 5
+```
+
 Import foundational AI papers:
 
 ```bash
@@ -136,6 +143,8 @@ Useful commands:
 
 ```bash
 .venv/bin/ai-paper-fetcher next
+.venv/bin/ai-paper-fetcher next --track ai
+.venv/bin/ai-paper-fetcher next --track fundamentals
 .venv/bin/ai-paper-fetcher next --limit 3
 .venv/bin/ai-paper-fetcher progress next --limit 5
 .venv/bin/ai-paper-fetcher progress list
@@ -148,13 +157,26 @@ Useful commands:
 
 Supported statuses are `queued`, `skimmed`, `reading`, `understood`, and `archived`. Understanding is tracked on a `0` to `5` scale, where `5` means you can explain the paper to someone else. Markdown reports include saved progress under each paper.
 
-When a paper with a local PDF is marked `understood`, the PDF is moved into a topic-specific folder under `papers/read/`, such as `papers/read/ai_agents/`, and the reading-list CSV is updated with the new path. This keeps completed papers out of the active topic folders without losing the file link.
+When a paper with a local PDF is marked `skimmed`, the PDF is moved into a topic-specific folder under `papers/skimmed/`, such as `papers/skimmed/ai_agents/`. When it is marked `understood`, the PDF is moved into a topic-specific folder under `papers/read/`, such as `papers/read/ai_agents/`. The reading-list CSV is updated with the new path, so reports keep working while active topic folders stay focused on unread papers.
 
 The top-level `next` command skips papers marked `understood` or `archived`, boosts papers already in progress, and uses relevance score, citation count/OpenAlex metadata, foundational status, and local PDF availability to explain why a paper is recommended.
 
 ## Configuration
 
 Research topics live in [config.yaml](config.yaml).
+
+Topics can be grouped into tracks so broad streams do not fight each other in fetches and recommendations. The default config includes:
+
+- `ai`: LLM evaluation, agents, interpretability, RAG/grounding, multimodal reasoning, training/alignment, and AI security.
+- `fundamentals`: algorithms and mathematics for AI.
+
+Track-aware commands:
+
+```bash
+.venv/bin/ai-paper-fetcher fetch --all --track ai --max-results 5
+.venv/bin/ai-paper-fetcher fetch --all --track fundamentals --max-results 5
+.venv/bin/ai-paper-fetcher next --track fundamentals
+```
 
 Each topic can define:
 

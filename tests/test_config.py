@@ -2,7 +2,7 @@ from pathlib import Path
 import tempfile
 import unittest
 
-from ai_paper_fetcher.config import load_foundational_papers, load_topics
+from ai_paper_fetcher.config import load_foundational_papers, load_topics, load_tracks
 
 
 class ConfigTests(unittest.TestCase):
@@ -55,6 +55,28 @@ papers:
         self.assertEqual(papers[0].arxiv_id, "1706.03762")
         self.assertEqual(papers[0].topic, "foundations_transformers")
         self.assertEqual(papers[0].note, "Introduced the Transformer.")
+
+    def test_load_tracks(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            config_path = Path(temp_dir) / "config.yaml"
+            config_path.write_text(
+                """
+tracks:
+  ai:
+    topics:
+      - llm_evaluation
+      - ai_agents
+  fundamentals:
+    - algorithms
+    - mathematics_for_ai
+""",
+                encoding="utf-8",
+            )
+
+            tracks = load_tracks(config_path)
+
+        self.assertEqual(tracks["ai"].topics, ["llm_evaluation", "ai_agents"])
+        self.assertEqual(tracks["fundamentals"].topics, ["algorithms", "mathematics_for_ai"])
 
 
 if __name__ == "__main__":

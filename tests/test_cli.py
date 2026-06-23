@@ -46,6 +46,36 @@ topics:
     )
 
 
+def write_track_config(path: Path) -> None:
+    path.write_text(
+        """
+tracks:
+  ai:
+    topics:
+      - llm_evaluation
+  fundamentals:
+    topics:
+      - algorithms
+topics:
+  llm_evaluation:
+    query: "LLM evaluation"
+    include_keywords:
+      - benchmark
+    exclude_keywords: []
+    categories:
+      - cs.CL
+  algorithms:
+    query: "algorithms"
+    include_keywords:
+      - algorithm
+    exclude_keywords: []
+    categories:
+      - cs.DS
+""",
+        encoding="utf-8",
+    )
+
+
 class CliTests(unittest.TestCase):
     def test_fetch_ranks_by_default(self):
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -159,6 +189,37 @@ class CliTests(unittest.TestCase):
         self.assertEqual(exit_code, 0)
         self.assertEqual(search.call_count, 1)
         self.assertEqual([paper.paper_id for paper in papers], ["duplicate"])
+
+    def test_fetch_all_can_filter_by_track(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            data_dir = Path(temp_dir) / "data"
+            papers_dir = Path(temp_dir) / "papers"
+            config_path = Path(temp_dir) / "config.yaml"
+            write_track_config(config_path)
+
+            with patch("ai_paper_fetcher.cli.search_papers", return_value=[sample_paper()]) as search:
+                exit_code = main(
+                    [
+                        "fetch",
+                        "--all",
+                        "--track",
+                        "fundamentals",
+                        "--max-results",
+                        "1",
+                        "--no-download",
+                        "--no-citations",
+                        "--config",
+                        str(config_path),
+                        "--data-dir",
+                        str(data_dir),
+                        "--papers-dir",
+                        str(papers_dir),
+                    ]
+                )
+
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(search.call_count, 1)
+        self.assertEqual(search.call_args.kwargs["query"], "algorithms")
 
     def test_report_command_writes_markdown(self):
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -534,6 +595,42 @@ papers:
         self.assertTrue(moved_exists)
         self.assertEqual(papers[0].local_pdf_path, moved_path.as_posix())
 
+    def test_progress_skimmed_moves_local_pdf_to_topic_skimmed_folder(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            data_dir = Path(temp_dir) / "data"
+            papers_dir = Path(temp_dir) / "papers"
+            pdf_path = papers_dir / "ai_agents" / "paper.pdf"
+            pdf_path.parent.mkdir(parents=True)
+            pdf_path.write_text("pdf", encoding="utf-8")
+            item = sample_paper()
+            item.topic = "ai_agents"
+            item.local_pdf_path = pdf_path.as_posix()
+            write_papers(data_dir / "reading_list.csv", [item])
+
+            exit_code = main(
+                [
+                    "progress",
+                    "update",
+                    "paper-1",
+                    "--status",
+                    "skimmed",
+                    "--data-dir",
+                    str(data_dir),
+                    "--papers-dir",
+                    str(papers_dir),
+                ]
+            )
+
+            papers = load_papers(data_dir / "reading_list.csv")
+            moved_path = papers_dir / "skimmed" / "ai_agents" / "paper.pdf"
+            source_exists = pdf_path.exists()
+            moved_exists = moved_path.exists()
+
+        self.assertEqual(exit_code, 0)
+        self.assertFalse(source_exists)
+        self.assertTrue(moved_exists)
+        self.assertEqual(papers[0].local_pdf_path, moved_path.as_posix())
+
     def test_progress_next_lists_unfinished_papers(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             data_dir = Path(temp_dir) / "data"
@@ -605,6 +702,27 @@ papers:
         self.assertNotIn("finished:", stdout.getvalue())
         self.assertIn("Citation graph signal: 25 citations", stdout.getvalue())
         self.assertIn("currently reading", stdout.getvalue())
+
+    def test_next_command_can_filter_by_track(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            data_dir = Path(temp_dir) / "data"
+            data_dir.mkdir()
+            config_path = Path(temp_dir) / "config.yaml"
+            write_track_config(config_path)
+            ai_paper = sample_paper_with_id("ai-paper")
+            ai_paper.topic = "llm_evaluation"
+            ai_paper.relevance_score = "1"
+            fundamentals_paper = sample_paper_with_id("math-paper")
+            fundamentals_paper.topic = "algorithms"
+            fundamentals_paper.relevance_score = "100"
+            write_papers(data_dir / "reading_list.csv", [ai_paper, fundamentals_paper])
+
+            with patch("sys.stdout", new_callable=StringIO) as stdout:
+                exit_code = main(["next", "--track", "ai", "--config", str(config_path), "--data-dir", str(data_dir)])
+
+        self.assertEqual(exit_code, 0)
+        self.assertIn("ai-paper:", stdout.getvalue())
+        self.assertNotIn("math-paper:", stdout.getvalue())
 
 
 if __name__ == "__main__":
