@@ -96,6 +96,7 @@ See [examples/sample_reading_list.md](examples/sample_reading_list.md) for a sma
 | `download-missing` | Download PDFs for existing rows with missing local files. |
 | `progress` | Track reading status, understanding, notes, and next actions. |
 | `next` | Recommend the next paper to read from progress, ranking, and citation signals. |
+| `ui` | Run a local browser UI for managing the paper library. |
 
 ## Examples
 
@@ -134,6 +135,30 @@ Hide progress messages:
 ```bash
 .venv/bin/ai-paper-fetcher weekly --quiet
 ```
+
+## Local UI
+
+Run the local library UI:
+
+```bash
+.venv/bin/ai-paper-fetcher ui
+```
+
+Then open:
+
+```text
+http://localhost:8765/
+```
+
+The UI supports filtering by track, topic, status, and search text; updating reading status and understanding; adding notes and next actions; opening local PDFs; and viewing the next recommendation.
+
+Batch logs are available at:
+
+```text
+http://localhost:8765/logs
+```
+
+The logs page shows `logs/weekly.out.log` and `logs/weekly.err.log`, which are used by the scheduled daily fetch job.
 
 ## Learning Progress
 

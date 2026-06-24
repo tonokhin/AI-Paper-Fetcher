@@ -37,6 +37,7 @@ from .storage import (
     write_papers,
 )
 from .text import slugify
+from .ui import run_ui
 
 
 class Progress:
@@ -85,6 +86,16 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "next":
         return run_next(args)
+
+    if args.command == "ui":
+        run_ui(
+            data_dir=Path(args.data_dir),
+            papers_dir=Path(args.papers_dir),
+            config_path=Path(args.config),
+            host=args.host,
+            port=args.port,
+        )
+        return 0
 
     if args.command == "download-missing":
         summary = download_missing_pdfs(
@@ -184,7 +195,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "command",
         nargs="?",
-        choices=["fetch", "citations", "rank", "report", "weekly", "foundations", "download-missing", "progress", "next"],
+        choices=["fetch", "citations", "rank", "report", "weekly", "foundations", "download-missing", "progress", "next", "ui"],
         help="Command to run.",
     )
     parser.add_argument(
@@ -262,6 +273,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--minutes", type=int, help="Minutes to add to this paper's time spent.")
     parser.add_argument("--next-action", help="Next learning action for this paper.")
     parser.add_argument("--limit", type=int, help="Maximum items for progress list or next.")
+    parser.add_argument("--host", default="127.0.0.1", help="Host for the local UI server.")
+    parser.add_argument("--port", type=int, default=8765, help="Port for the local UI server.")
     return parser
 
 
