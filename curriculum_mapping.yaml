@@ -90,28 +90,24 @@ topics:
   LLM evaluation:
     covers:
       - transformers-and-llms
-      - ai-researcher
     stage: doctoral
     role: research
 
   llm_evaluation:
     covers:
       - transformers-and-llms
-      - ai-researcher
     stage: doctoral
     role: research
 
   AI agents:
     covers:
       - transformers-and-llms
-      - ai-researcher
     stage: doctoral
     role: research
 
   ai_agents:
     covers:
       - transformers-and-llms
-      - ai-researcher
     stage: doctoral
     role: research
 
@@ -119,7 +115,6 @@ topics:
     covers:
       - deep-learning
       - transformers-and-llms
-      - ai-researcher
     stage: doctoral
     role: research
 
@@ -140,14 +135,12 @@ topics:
   llm_training_and_alignment:
     covers:
       - transformers-and-llms
-      - ai-researcher
     stage: doctoral
     role: research
 
   ai_security:
     covers:
       - transformers-and-llms
-      - ai-researcher
     stage: doctoral
     role: research
 
