@@ -148,8 +148,12 @@ def render_index(state: UiState, query: dict[str, list[str]]) -> str:
         "status": _query_value(query, "status"),
         "track": _query_value(query, "track"),
         "topic": _query_value(query, "topic"),
+        "page": _query_value(query, "page"),
+        "page_size": _query_value(query, "page_size"),
     }
     visible = apply_filters(papers, progress, tracks, filters)
+    pagination = pagination_for(visible, filters)
+    page_papers = page_items(visible, pagination)
     recommendation = recommend_next_papers(visible, progress, limit=1)
     topics = sorted({paper.topic for paper in papers})
 
@@ -165,14 +169,16 @@ def render_index(state: UiState, query: dict[str, list[str]]) -> str:
             "<body>",
             "<header>",
             "<h1>AI Paper Library</h1>",
-            f"<p>{len(visible)} of {len(papers)} papers shown</p>",
+            f"<p>{pagination['start_label']}-{pagination['end_label']} of {len(visible)} filtered papers, {len(papers)} total</p>",
             '<nav><a href="/">Library</a><a href="/logs">Batch Logs</a></nav>',
             "</header>",
             render_filters(filters, tracks, topics),
             render_recommendation(recommendation[0] if recommendation else None),
+            render_pagination(filters, pagination),
             '<main class="paper-list">',
-            *(render_paper_card(paper, progress.get(paper.paper_id), filters) for paper in visible),
+            *(render_paper_card(paper, progress.get(paper.paper_id), filters) for paper in page_papers),
             "</main>",
+            render_pagination(filters, pagination),
             "</body>",
             "</html>",
         ]
@@ -265,6 +271,7 @@ def render_filters(filters: dict[str, str], tracks: dict[str, object], topics: l
     return f"""
 <form class="filters" method="get" action="/">
   <input type="search" name="q" placeholder="Search papers" value="{escape(filters['q'])}">
+  <input type="hidden" name="page" value="1">
   <select name="track">
     <option value="">All tracks</option>
     {''.join(option(name, filters['track']) for name in tracks)}
@@ -276,6 +283,9 @@ def render_filters(filters: dict[str, str], tracks: dict[str, object], topics: l
   <select name="status">
     <option value="">All statuses</option>
     {''.join(option(status, filters['status'], status.title()) for status in STATUSES)}
+  </select>
+  <select name="page_size">
+    {''.join(option(str(size), filters['page_size'] or '20', str(size)) for size in [10, 20, 50, 100])}
   </select>
   <button type="submit">Filter</button>
   <a class="button" href="/">Reset</a>
@@ -342,6 +352,51 @@ def current_query(filters: dict[str, str]) -> str:
     return "/" + (("?" + "&".join(parts)) if parts else "")
 
 
+def pagination_for(items: list[Paper], filters: dict[str, str]) -> dict[str, int]:
+    page_size = _bounded_int(filters.get("page_size"), default=20, minimum=1, maximum=100)
+    page_count = max(1, (len(items) + page_size - 1) // page_size)
+    page = _bounded_int(filters.get("page"), default=1, minimum=1, maximum=page_count)
+    start = (page - 1) * page_size
+    end = min(start + page_size, len(items))
+    return {
+        "page": page,
+        "page_size": page_size,
+        "page_count": page_count,
+        "start": start,
+        "end": end,
+        "start_label": 0 if not items else start + 1,
+        "end_label": end,
+    }
+
+
+def page_items(items: list[Paper], pagination: dict[str, int]) -> list[Paper]:
+    return items[pagination["start"] : pagination["end"]]
+
+
+def render_pagination(filters: dict[str, str], pagination: dict[str, int]) -> str:
+    if pagination["page_count"] <= 1:
+        return ""
+    page = pagination["page"]
+    previous_link = pagination_link(filters, page - 1, pagination["page_size"]) if page > 1 else ""
+    next_link = pagination_link(filters, page + 1, pagination["page_size"]) if page < pagination["page_count"] else ""
+    return f"""
+<section class="pagination">
+  {previous_link}
+  <span>Page {pagination['page']} of {pagination['page_count']}</span>
+  {next_link}
+</section>
+"""
+
+
+def pagination_link(filters: dict[str, str], page: int, page_size: int) -> str:
+    params = {key: value for key, value in filters.items() if value and key not in {"page", "page_size"}}
+    params["page"] = str(page)
+    params["page_size"] = str(page_size)
+    query = "&".join(f"{quote(key)}={quote(value)}" for key, value in params.items())
+    label = "Previous" if page < _bounded_int(filters.get("page"), 1, 1, 10_000) else "Next"
+    return f'<a class="button" href="/?{query}">{label}</a>'
+
+
 def shelf_for_status(status: str) -> str | None:
     if status == "skimmed":
         return "skimmed"
@@ -399,6 +454,14 @@ def _optional_int(value: str | None) -> int | None:
         return int(value)
     except ValueError:
         return None
+
+
+def _bounded_int(value: str | None, default: int, minimum: int, maximum: int) -> int:
+    try:
+        parsed = int(value or "")
+    except ValueError:
+        parsed = default
+    return min(max(parsed, minimum), maximum)
 
 
 CSS = """
@@ -473,6 +536,15 @@ button, .button {
   display: grid;
   gap: 14px;
   padding: 18px 28px 32px;
+}
+.pagination {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 18px 28px 0;
+}
+.pagination span {
+  color: #65717c;
 }
 .paper {
   display: grid;

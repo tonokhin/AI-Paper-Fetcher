@@ -8,6 +8,7 @@ papers/
 weekly_reports/*.md
 logs/
 local_tools/
+curriculum_mapping.yaml
 
 plans/
 
