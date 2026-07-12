@@ -213,6 +213,49 @@ Each topic can define:
 
 Foundational papers live in [foundational_papers.yaml](foundational_papers.yaml). Entries are fetched by exact arXiv ID and tagged as `collection=foundational`.
 
+## Curriculum Mapping
+
+AI Paper Fetcher can be paired with an external curriculum graph or learning
+map. The optional [curriculum_mapping.yaml](curriculum_mapping.yaml) file maps
+paper topic ids to concept ids in that external curriculum:
+
+```yaml
+topics:
+  foundations_transformers:
+    covers:
+      - transformers-and-llms
+    stage: graduate
+    role: research
+```
+
+The repo does not require a particular curriculum project. Treat `covers` as
+the concept ids used by your own curriculum/resource catalog. `stage` and
+`role` describe the intended learning layer; the default mapping treats papers
+as graduate or doctoral research resources, not as beginner study material.
+
+This mapping is intended to support a curriculum-resource export. A compatible
+export can write papers as simple YAML resources:
+
+```yaml
+resources:
+  - id: paper-1706-03762
+    title: "Attention Is All You Need"
+    type: paper
+    level: advanced
+    cost: free
+    format: text
+    url: "https://arxiv.org/abs/1706.03762"
+    covers:
+      - transformers-and-llms
+    provenance:
+      source: ai-paper-fetcher
+      review_status: pending
+```
+
+Downstream curriculum tools can then decide how to display those papers, for
+example as a postgraduate research layer, a "ready now" shelf, or a later list
+gated by missing prerequisites.
+
 ## Features
 
 - Search arXiv by topic or keyword.
