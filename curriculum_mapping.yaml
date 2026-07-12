@@ -85,7 +85,23 @@ topics:
     role: research
 
   # Weekly/configured research topics from config.yaml.
+  # Legacy display labels are kept as aliases so older reading_list.csv files
+  # can be exported without rewriting historical rows.
+  LLM evaluation:
+    covers:
+      - transformers-and-llms
+      - ai-researcher
+    stage: doctoral
+    role: research
+
   llm_evaluation:
+    covers:
+      - transformers-and-llms
+      - ai-researcher
+    stage: doctoral
+    role: research
+
+  AI agents:
     covers:
       - transformers-and-llms
       - ai-researcher

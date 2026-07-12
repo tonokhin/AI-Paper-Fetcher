@@ -11,6 +11,7 @@ from urllib.error import URLError
 from .arxiv_client import fetch_paper_by_id, search_papers
 from .citations import enrich_citations
 from .config import FoundationalPaperConfig, TopicConfig, load_foundational_papers, load_topics, load_tracks
+from .curriculum_export import export_curriculum_resources
 from .downloader import download_pdf, mark_downloaded
 from .filtering import filter_papers
 from .models import Paper
@@ -106,6 +107,24 @@ def main(argv: list[str] | None = None) -> int:
         print_summary(summary, Path(args.data_dir) / "reading_list.csv")
         return 0
 
+    if args.command == "export-curriculum-resources":
+        try:
+            result = export_curriculum_resources(
+                reading_list_path=Path(args.data_dir) / "reading_list.csv",
+                mapping_path=Path(args.mapping),
+                output_path=Path(args.out),
+                estimated_hours=args.estimated_hours,
+                skip_unmapped=args.skip_unmapped,
+            )
+        except (FileNotFoundError, ValueError) as error:
+            print(f"Curriculum export error: {error}", file=sys.stderr)
+            return 1
+
+        print(f"Exported {result.written} curriculum resources to {Path(args.out).as_posix()}")
+        if result.skipped_unmapped:
+            print(f"Skipped unmapped topics: {', '.join(result.skipped_unmapped)}")
+        return 0
+
     if args.command == "foundations":
         try:
             summary = run_foundations(args)
@@ -195,7 +214,19 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "command",
         nargs="?",
-        choices=["fetch", "citations", "rank", "report", "weekly", "foundations", "download-missing", "progress", "next", "ui"],
+        choices=[
+            "fetch",
+            "citations",
+            "rank",
+            "report",
+            "weekly",
+            "foundations",
+            "download-missing",
+            "export-curriculum-resources",
+            "progress",
+            "next",
+            "ui",
+        ],
         help="Command to run.",
     )
     parser.add_argument(
@@ -252,6 +283,27 @@ def build_parser() -> argparse.ArgumentParser:
         help="Skip automatic ranking after fetch.",
     )
     parser.add_argument("--report-path", help="Output path for the Markdown report.")
+    parser.add_argument(
+        "--mapping",
+        default="curriculum_mapping.yaml",
+        help="Path to curriculum topic mapping YAML.",
+    )
+    parser.add_argument(
+        "--out",
+        default="resources/generated-ai-papers.yaml",
+        help="Output path for exported curriculum resource YAML.",
+    )
+    parser.add_argument(
+        "--estimated-hours",
+        type=float,
+        default=6.0,
+        help="Estimated study hours assigned to each exported paper resource.",
+    )
+    parser.add_argument(
+        "--skip-unmapped",
+        action="store_true",
+        help="Skip papers whose topic is not present in the curriculum mapping.",
+    )
     parser.add_argument(
         "--weekly-reports-dir",
         default="weekly_reports",

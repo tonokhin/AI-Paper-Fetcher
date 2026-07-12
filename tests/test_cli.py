@@ -4,6 +4,8 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
+import yaml
+
 from ai_paper_fetcher.cli import main, weekly_report_file
 from ai_paper_fetcher.models import Paper
 from ai_paper_fetcher.storage import load_papers, write_papers
@@ -234,6 +236,42 @@ class CliTests(unittest.TestCase):
         self.assertEqual(exit_code, 0)
         self.assertIn("# AI Paper Reading List", report)
         self.assertIn("A Benchmark for LLM Evaluation", report)
+
+    def test_export_curriculum_resources_command_writes_yaml(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            data_dir = root / "data"
+            mapping_path = root / "curriculum_mapping.yaml"
+            output_path = root / "resources" / "generated-ai-papers.yaml"
+            write_papers(data_dir / "reading_list.csv", [sample_paper_with_id("1706.03762")])
+            mapping_path.write_text(
+                """
+topics:
+  llm_evaluation:
+    covers:
+      - transformers-and-llms
+    stage: graduate
+    role: research
+""",
+                encoding="utf-8",
+            )
+
+            exit_code = main(
+                [
+                    "export-curriculum-resources",
+                    "--data-dir",
+                    str(data_dir),
+                    "--mapping",
+                    str(mapping_path),
+                    "--out",
+                    str(output_path),
+                ]
+            )
+            data = yaml.safe_load(output_path.read_text(encoding="utf-8"))
+
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(data["resources"][0]["id"], "paper-1706-03762")
+        self.assertEqual(data["resources"][0]["covers"], ["transformers-and-llms"])
 
     def test_foundations_command_adds_foundational_papers(self):
         with tempfile.TemporaryDirectory() as temp_dir:

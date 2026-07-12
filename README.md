@@ -53,6 +53,14 @@ Generate a Markdown report from the current reading list:
 .venv/bin/ai-paper-fetcher report
 ```
 
+Export papers as resources for an external curriculum graph:
+
+```bash
+.venv/bin/ai-paper-fetcher export-curriculum-resources \
+  --mapping curriculum_mapping.yaml \
+  --out resources/generated-ai-papers.yaml
+```
+
 Download PDFs later for papers that were previously saved with `--no-download`:
 
 ```bash
@@ -93,6 +101,7 @@ See [examples/sample_reading_list.md](examples/sample_reading_list.md) for a sma
 | `citations` | Refresh OpenAlex citation counts for saved papers. |
 | `rank` | Re-rank the current CSV reading list. |
 | `report` | Regenerate the Markdown reading list. |
+| `export-curriculum-resources` | Export papers as resource YAML for an external curriculum graph. |
 | `download-missing` | Download PDFs for existing rows with missing local files. |
 | `progress` | Track reading status, understanding, notes, and next actions. |
 | `next` | Recommend the next paper to read from progress, ranking, and citation signals. |
@@ -233,8 +242,8 @@ the concept ids used by your own curriculum/resource catalog. `stage` and
 `role` describe the intended learning layer; the default mapping treats papers
 as graduate or doctoral research resources, not as beginner study material.
 
-This mapping is intended to support a curriculum-resource export. A compatible
-export can write papers as simple YAML resources:
+The `export-curriculum-resources` command writes papers as simple YAML
+resources:
 
 ```yaml
 resources:
@@ -256,6 +265,10 @@ Downstream curriculum tools can then decide how to display those papers, for
 example as a postgraduate research layer, a "ready now" shelf, or a later list
 gated by missing prerequisites.
 
+By default, export fails if a paper's topic is not present in the mapping. Use
+`--skip-unmapped` when exporting an ad hoc reading list and you only want mapped
+papers in the output.
+
 ## Features
 
 - Search arXiv by topic or keyword.
@@ -270,6 +283,7 @@ gated by missing prerequisites.
 - Rank by topic relevance, high-value research terms, recency, citation count, and foundational status.
 - Generate Markdown reading reports.
 - Generate dated weekly reports.
+- Export curriculum-compatible resource YAML.
 - Print progress during long runs.
 
 ## Architecture
