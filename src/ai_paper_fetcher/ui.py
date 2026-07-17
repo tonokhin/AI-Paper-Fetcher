@@ -5,14 +5,13 @@ from html import escape
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, quote, unquote, urlparse
-import shutil
 
 from .config import load_tracks
+from .library import move_pdf_to_status_shelf, shelf_for_status
 from .models import Paper
 from .progress import LearningProgress, STATUSES, load_progress, progress_path, save_progress, update_progress
 from .recommendations import recommend_next_papers
 from .storage import load_papers, write_papers
-from .text import slugify
 
 
 @dataclass
@@ -395,40 +394,6 @@ def pagination_link(filters: dict[str, str], page: int, page_size: int) -> str:
     query = "&".join(f"{quote(key)}={quote(value)}" for key, value in params.items())
     label = "Previous" if page < _bounded_int(filters.get("page"), 1, 1, 10_000) else "Next"
     return f'<a class="button" href="/?{query}">{label}</a>'
-
-
-def shelf_for_status(status: str) -> str | None:
-    if status == "skimmed":
-        return "skimmed"
-    if status == "understood":
-        return "read"
-    return None
-
-
-def move_pdf_to_status_shelf(paper: Paper, papers_dir: Path, shelf: str) -> Path | None:
-    if not paper.local_pdf_path:
-        return None
-    source = Path(paper.local_pdf_path)
-    if not source.exists():
-        return None
-    status_dir = papers_dir / shelf / slugify(paper.topic)
-    status_dir.mkdir(parents=True, exist_ok=True)
-    if source.resolve().parent == status_dir.resolve():
-        return source
-    destination = unique_destination(status_dir / source.name)
-    shutil.move(source.as_posix(), destination.as_posix())
-    paper.local_pdf_path = destination.as_posix()
-    return destination
-
-
-def unique_destination(path: Path) -> Path:
-    if not path.exists():
-        return path
-    for index in range(2, 10_000):
-        candidate = path.with_name(f"{path.stem}-{index}{path.suffix}")
-        if not candidate.exists():
-            return candidate
-    raise ValueError(f"Could not find an available destination for {path}")
 
 
 def display_topic(topic: str) -> str:

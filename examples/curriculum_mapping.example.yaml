@@ -1,0 +1,27 @@
+topics:
+  foundations_transformers:
+    covers:
+      - transformers-and-llms
+    stage: graduate
+    role: research
+
+  llm_evaluation:
+    covers:
+      - llm-evaluation
+      - benchmarks
+    stage: graduate
+    role: research
+
+  ai_agents:
+    covers:
+      - ai-agents
+      - tool-use
+    stage: graduate
+    role: research
+
+  algorithms:
+    covers:
+      - algorithms
+      - optimization
+    stage: undergraduate
+    role: foundations

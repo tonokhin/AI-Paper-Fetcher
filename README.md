@@ -57,7 +57,7 @@ Export papers as resources for an external curriculum graph:
 
 ```bash
 .venv/bin/ai-paper-fetcher export-curriculum-resources \
-  --mapping curriculum_mapping.yaml \
+  --mapping examples/curriculum_mapping.example.yaml \
   --out resources/generated-ai-papers.yaml
 ```
 
@@ -225,8 +225,10 @@ Foundational papers live in [foundational_papers.yaml](foundational_papers.yaml)
 ## Curriculum Mapping
 
 AI Paper Fetcher can be paired with an external curriculum graph or learning
-map. The optional [curriculum_mapping.yaml](curriculum_mapping.yaml) file maps
-paper topic ids to concept ids in that external curriculum:
+map. A curriculum mapping file maps paper topic ids to concept ids in that
+external curriculum. See
+[examples/curriculum_mapping.example.yaml](examples/curriculum_mapping.example.yaml)
+for a committed example:
 
 ```yaml
 topics:
@@ -241,6 +243,9 @@ The repo does not require a particular curriculum project. Treat `covers` as
 the concept ids used by your own curriculum/resource catalog. `stage` and
 `role` describe the intended learning layer; the default mapping treats papers
 as graduate or doctoral research resources, not as beginner study material.
+
+Your personal `curriculum_mapping.yaml` can live at the repo root and is ignored
+by git, so local curriculum decisions do not need to be committed.
 
 The `export-curriculum-resources` command writes papers as simple YAML
 resources:
