@@ -43,7 +43,11 @@ config.yaml / foundational_papers.yaml
 | `progress.py` | Personal learning progress, notes, and next actions. |
 | `recommendations.py` | `next` recommendation scoring from rank, citations, and progress. |
 | `reporting.py` | Markdown reading-list rendering. |
-| `ui.py` | Local browser UI for filtering, notes, progress, PDFs, and logs. |
+| `ui.py` | Local browser UI server and HTTP routing. |
+| `ui_actions.py` | UI form mutations, including progress updates. |
+| `ui_views.py` | UI filtering, pagination, log rendering, and HTML fragments. |
+| `ui_styles.py` | Inline CSS for the local UI. |
+| `ui_state.py` | Shared UI path/state object. |
 | `curriculum_export.py` | Export reading-list papers as resource YAML for external learning maps. |
 
 ## Data Flow

@@ -10,7 +10,9 @@ from urllib.parse import urlencode
 from ai_paper_fetcher.models import Paper
 from ai_paper_fetcher.progress import LearningProgress, load_progress, progress_path
 from ai_paper_fetcher.storage import load_papers, write_papers
-from ai_paper_fetcher.ui import LibraryHandler, UiState, apply_filters, page_items, pagination_for
+from ai_paper_fetcher.ui import LibraryHandler
+from ai_paper_fetcher.ui_state import UiState
+from ai_paper_fetcher.ui_views import apply_filters, page_items, pagination_for
 
 
 def paper(paper_id: str, title: str | None = None, topic: str = "llm_evaluation") -> Paper:
