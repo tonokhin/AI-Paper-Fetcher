@@ -28,7 +28,9 @@ config.yaml / foundational_papers.yaml
 
 | Module | Responsibility |
 | --- | --- |
-| `cli.py` | Command parsing and workflow orchestration. |
+| `cli.py` | Command parsing, dispatch, and user-facing error handling. |
+| `workflows.py` | Fetch, weekly, foundations, reports, ranking, citation, and download workflows. |
+| `commands/progress.py` | Progress and `next` command handlers. |
 | `arxiv_client.py` | arXiv Atom API search and exact arXiv ID lookup. |
 | `config.py` | Topic, track, and foundational-paper YAML loading. |
 | `filtering.py` | Include/exclude keyword and date filtering. |
@@ -37,6 +39,7 @@ config.yaml / foundational_papers.yaml
 | `storage.py` | CSV/JSON read-write, duplicate IDs, schema migration. |
 | `ranking.py` | Relevance scoring, priority assignment, sorting. |
 | `library.py` | Shared local-library actions, including PDF shelf movement. |
+| `tracks.py` | Shared track resolution and track-based paper filtering. |
 | `progress.py` | Personal learning progress, notes, and next actions. |
 | `recommendations.py` | `next` recommendation scoring from rank, citations, and progress. |
 | `reporting.py` | Markdown reading-list rendering. |

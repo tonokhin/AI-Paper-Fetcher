@@ -83,7 +83,7 @@ class CliTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp_dir:
             data_dir = Path(temp_dir) / "data"
 
-            with patch("ai_paper_fetcher.cli.search_papers", return_value=[sample_paper()]):
+            with patch("ai_paper_fetcher.workflows.search_papers", return_value=[sample_paper()]):
                 exit_code = main(
                     [
                         "fetch",
@@ -106,7 +106,7 @@ class CliTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp_dir:
             data_dir = Path(temp_dir) / "data"
 
-            with patch("ai_paper_fetcher.cli.search_papers", return_value=[sample_paper()]):
+            with patch("ai_paper_fetcher.workflows.search_papers", return_value=[sample_paper()]):
                 exit_code = main(
                     [
                         "fetch",
@@ -137,7 +137,7 @@ class CliTests(unittest.TestCase):
                 [sample_paper_with_id("new-1")],
                 [sample_paper_with_id("new-2")],
             ]
-            with patch("ai_paper_fetcher.cli.search_papers", side_effect=pages) as search:
+            with patch("ai_paper_fetcher.workflows.search_papers", side_effect=pages) as search:
                 exit_code = main(
                     [
                         "fetch",
@@ -169,7 +169,7 @@ class CliTests(unittest.TestCase):
             papers_dir = Path(temp_dir) / "papers"
             write_papers(data_dir / "reading_list.csv", [sample_paper_with_id("duplicate")])
 
-            with patch("ai_paper_fetcher.cli.search_papers", return_value=[sample_paper_with_id("duplicate")]) as search:
+            with patch("ai_paper_fetcher.workflows.search_papers", return_value=[sample_paper_with_id("duplicate")]) as search:
                 exit_code = main(
                     [
                         "fetch",
@@ -199,7 +199,7 @@ class CliTests(unittest.TestCase):
             config_path = Path(temp_dir) / "config.yaml"
             write_track_config(config_path)
 
-            with patch("ai_paper_fetcher.cli.search_papers", return_value=[sample_paper()]) as search:
+            with patch("ai_paper_fetcher.workflows.search_papers", return_value=[sample_paper()]) as search:
                 exit_code = main(
                     [
                         "fetch",
@@ -289,7 +289,7 @@ papers:
                 encoding="utf-8",
             )
 
-            with patch("ai_paper_fetcher.cli.fetch_paper_by_id", return_value=sample_paper_with_id("1706.03762")):
+            with patch("ai_paper_fetcher.workflows.fetch_paper_by_id", return_value=sample_paper_with_id("1706.03762")):
                 exit_code = main(
                     [
                         "foundations",
@@ -324,7 +324,7 @@ papers:
             destination.parent.mkdir(parents=True)
             destination.write_text("pdf", encoding="utf-8")
 
-            with patch("ai_paper_fetcher.cli.download_pdf", return_value=destination):
+            with patch("ai_paper_fetcher.workflows.download_pdf", return_value=destination):
                 exit_code = main(
                     [
                         "download-missing",
@@ -354,7 +354,7 @@ papers:
             destination.parent.mkdir(parents=True)
             destination.write_text("pdf", encoding="utf-8")
 
-            with patch("ai_paper_fetcher.cli.download_pdf", return_value=destination) as download:
+            with patch("ai_paper_fetcher.workflows.download_pdf", return_value=destination) as download:
                 exit_code = main(
                     [
                         "download-missing",
@@ -384,7 +384,7 @@ papers:
             config_path = Path(temp_dir) / "config.yaml"
             write_one_topic_config(config_path)
 
-            with patch("ai_paper_fetcher.cli.search_papers", return_value=[sample_paper()]):
+            with patch("ai_paper_fetcher.workflows.search_papers", return_value=[sample_paper()]):
                 exit_code = main(
                     [
                         "weekly",
@@ -424,7 +424,7 @@ papers:
                 [sample_paper_with_id("duplicate")],
                 [sample_paper_with_id("new-1")],
             ]
-            with patch("ai_paper_fetcher.cli.search_papers", side_effect=pages) as search:
+            with patch("ai_paper_fetcher.workflows.search_papers", side_effect=pages) as search:
                 exit_code = main(
                     [
                         "weekly",
@@ -459,7 +459,7 @@ papers:
             write_one_topic_config(config_path)
             write_papers(data_dir / "reading_list.csv", [sample_paper_with_id("duplicate")])
 
-            with patch("ai_paper_fetcher.cli.search_papers", return_value=[sample_paper_with_id("duplicate")]) as search:
+            with patch("ai_paper_fetcher.workflows.search_papers", return_value=[sample_paper_with_id("duplicate")]) as search:
                 exit_code = main(
                     [
                         "weekly",
@@ -497,8 +497,8 @@ papers:
                 [sample_paper_with_id("new-2")],
             ]
             with (
-                patch("ai_paper_fetcher.cli.search_papers", side_effect=pages) as search,
-                patch("ai_paper_fetcher.cli.enrich_citations") as citations,
+                patch("ai_paper_fetcher.workflows.search_papers", side_effect=pages) as search,
+                patch("ai_paper_fetcher.workflows.enrich_citations") as citations,
             ):
                 exit_code = main(
                     [
@@ -533,7 +533,7 @@ papers:
             data_dir = Path(temp_dir) / "data"
 
             with (
-                patch("ai_paper_fetcher.cli.search_papers", return_value=[sample_paper()]),
+                patch("ai_paper_fetcher.workflows.search_papers", return_value=[sample_paper()]),
                 patch("sys.stderr", new_callable=StringIO) as stderr,
             ):
                 exit_code = main(
