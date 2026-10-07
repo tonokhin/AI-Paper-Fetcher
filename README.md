@@ -20,11 +20,15 @@ python -m venv .venv
 Fast mode is a metadata-only weekly run:
 
 ```text
-max-results 3
+up to 3 new papers across all selected topics
 max-pages 2
 no PDF downloads
 no citation lookups
 ```
+
+For `weekly`, `--max-results` is a total cap across the selected topics. The
+starting topic rotates by report date so repeated runs cover topics in turn.
+For `fetch --all`, `--max-results` remains a per-topic cap.
 
 ## Main Workflows
 

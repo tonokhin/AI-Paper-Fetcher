@@ -220,6 +220,8 @@ def run_weekly(args: argparse.Namespace) -> WeeklyResult:
         config_topic=None,
         fetch_all=True,
         max_results=args.max_results,
+        weekly_total_limit=args.max_results,
+        weekly_rotation_date=args.report_date,
         new_results=not args.no_new_results,
         max_pages=args.max_pages,
         config=args.config,
@@ -313,6 +315,24 @@ def run_fetch(args: argparse.Namespace, parser: argparse.ArgumentParser) -> Fetc
             except ValueError as error:
                 parser.error(str(error))
             topics = {name: topic for name, topic in topics.items() if name in track_topics}
+
+        weekly_total_limit = getattr(args, "weekly_total_limit", None)
+        if weekly_total_limit is not None:
+            return fetch_weekly_topics(
+                topics=topics,
+                total_limit=weekly_total_limit,
+                rotation_date=getattr(args, "weekly_rotation_date", None),
+                data_dir=data_dir,
+                papers_dir=papers_dir,
+                no_download=args.no_download,
+                enrich_with_citations=not args.no_citations,
+                auto_rank=not args.no_rank,
+                config_path=Path(args.config),
+                new_results=args.new_results,
+                max_pages=args.max_pages,
+                progress=progress,
+            )
+
         summary = FetchSummary()
         for topic_config in topics.values():
             progress.log(f"Starting topic: {topic_config.name}")
@@ -340,6 +360,66 @@ def run_fetch(args: argparse.Namespace, parser: argparse.ArgumentParser) -> Fetc
     raise AssertionError("parser.error should exit")
 
 
+def fetch_weekly_topics(
+    topics: dict[str, TopicConfig],
+    total_limit: int,
+    rotation_date: str | None,
+    data_dir: Path,
+    papers_dir: Path,
+    no_download: bool,
+    enrich_with_citations: bool,
+    auto_rank: bool,
+    config_path: Path,
+    new_results: bool,
+    max_pages: int,
+    progress: Progress,
+) -> FetchSummary:
+    topic_configs = list(topics.values())
+    if rotation_date:
+        run_date = date.fromisoformat(rotation_date)
+    else:
+        run_date = date.today()
+    if topic_configs:
+        offset = run_date.toordinal() % len(topic_configs)
+        topic_configs = topic_configs[offset:] + topic_configs[:offset]
+
+    total_limit = max(1, total_limit)
+    summary = FetchSummary()
+    saved_total = 0
+    while saved_total < total_limit and topic_configs:
+        round_saved = 0
+        for topic_config in topic_configs:
+            if saved_total >= total_limit:
+                break
+
+            progress.log(f"Starting topic: {topic_config.name}")
+            topic_summary = fetch_config_topic(
+                topic_config,
+                max_results=total_limit,
+                max_new_results=1,
+                data_dir=data_dir,
+                papers_dir=papers_dir,
+                no_download=no_download,
+                enrich_with_citations=enrich_with_citations,
+                auto_rank=False,
+                config_path=config_path,
+                new_results=new_results,
+                max_pages=max_pages,
+                progress=progress,
+            )
+            summary.add(topic_summary)
+            saved_total += topic_summary.saved
+            round_saved += topic_summary.saved
+
+        if round_saved == 0:
+            break
+
+    if auto_rank:
+        progress.log("Ranking reading list...")
+        summary.ranked = rank_existing_reading_list(data_dir / "reading_list.csv", config_path)
+    return summary
+
+
 def fetch_config_topic(
     topic_config: TopicConfig,
     max_results: int,
@@ -352,6 +432,7 @@ def fetch_config_topic(
     new_results: bool = False,
     max_pages: int = 5,
     progress: Progress | None = None,
+    max_new_results: int | None = None,
 ) -> FetchSummary:
     return fetch(
         topic=topic_config.name,
@@ -366,6 +447,7 @@ def fetch_config_topic(
         new_results=new_results,
         max_pages=max_pages,
         progress=progress,
+        max_new_results=max_new_results,
         include_keywords=topic_config.include_keywords,
         exclude_keywords=topic_config.exclude_keywords,
         categories=topic_config.categories,
@@ -390,6 +472,7 @@ def fetch(
     exclude_keywords: list[str] | None = None,
     categories: list[str] | None = None,
     published_after: str | None = None,
+    max_new_results: int | None = None,
 ) -> FetchSummary:
     progress = progress or Progress()
     ensure_project_dirs(data_dir, papers_dir)
@@ -404,6 +487,7 @@ def fetch(
     new_papers: list[Paper] = []
 
     page_size = max(1, max_results)
+    new_result_limit = max(1, max_new_results if max_new_results is not None else max_results)
     page_limit = max(1, max_pages if new_results else 1)
     for page in range(page_limit):
         progress.log(f"Fetching {topic} page {page + 1}/{page_limit}...")
@@ -460,13 +544,13 @@ def fetch(
                 known_ids.add(paper.paper_id)
                 seen.add(paper.paper_id)
 
-            if new_results and len(new_papers) >= max_results:
+            if len(new_papers) >= new_result_limit:
                 break
 
         progress.log(
             f"Topic {topic}: saved {len(new_papers)} new, skipped {summary.skipped_duplicates} duplicates so far."
         )
-        if not new_results or len(new_papers) >= max_results:
+        if not new_results or len(new_papers) >= new_result_limit:
             break
 
     append_papers(reading_list_path, new_papers)

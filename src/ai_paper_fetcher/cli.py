@@ -190,7 +190,12 @@ def build_parser() -> argparse.ArgumentParser:
     source.add_argument("--topic", help="Topic or keyword query to search on arXiv.")
     source.add_argument("--config-topic", help="Named topic from config.yaml.")
     source.add_argument("--all", action="store_true", dest="fetch_all", help="Fetch all configured topics.")
-    parser.add_argument("--max-results", type=int, default=10, help="Maximum arXiv results.")
+    parser.add_argument(
+        "--max-results",
+        type=int,
+        default=10,
+        help="Maximum results per topic; for weekly, maximum new papers across all selected topics.",
+    )
     parser.add_argument(
         "--new-results",
         action="store_true",

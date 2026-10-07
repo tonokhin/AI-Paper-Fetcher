@@ -57,6 +57,10 @@ skips papers already present in `data/seen_papers.json` or
 `data/reading_list.csv`, optionally enriches citation counts, optionally
 downloads PDFs, ranks the full reading list, and writes reports.
 
+For `weekly`, `--max-results` caps new papers across the whole run. Topics are
+visited in a report-date-based rotating order, with at most one new paper from
+each topic per pass. `fetch --all` retains its per-topic result limit.
+
 `fetch` can target one ad hoc topic, one configured topic, all configured
 topics, or all topics inside a named track.
 
