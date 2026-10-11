@@ -60,7 +60,9 @@ class CurriculumExportTests(unittest.TestCase):
     def test_paper_to_resource_uses_curriculum_shape(self):
         resource = paper_to_resource(
             sample_paper(),
-            CurriculumTopicMapping(covers=["transformers-and-llms"], stage="graduate"),
+            CurriculumTopicMapping(
+                covers=["transformers-and-llms"], stage="graduate", role="research"
+            ),
         )
 
         self.assertEqual(resource["id"], "paper-1706-03762")
@@ -73,6 +75,9 @@ class CurriculumExportTests(unittest.TestCase):
         self.assertEqual(resource["estimated_hours"], 6.0)
         self.assertEqual(resource["url"], "https://arxiv.org/abs/1706.03762")
         self.assertEqual(resource["covers"], ["transformers-and-llms"])
+        self.assertEqual(resource["curriculum_context"], {
+            "stage": "graduate", "role": "research",
+        })
         self.assertEqual(resource["provenance"]["source"], "ai-paper-fetcher")
         self.assertEqual(resource["provenance"]["review_status"], "pending")
 
@@ -102,6 +107,9 @@ class CurriculumExportTests(unittest.TestCase):
         self.assertEqual(result.written, 1)
         self.assertEqual(data["resources"][0]["id"], "paper-1706-03762")
         self.assertEqual(data["resources"][0]["covers"], ["transformers-and-llms"])
+        self.assertEqual(data["resources"][0]["curriculum_context"], {
+            "stage": "graduate", "role": "research",
+        })
 
     def test_export_fails_on_unmapped_topic_by_default(self):
         paper = sample_paper()

@@ -87,7 +87,7 @@ def paper_to_resource(
     *,
     estimated_hours: float = DEFAULT_ESTIMATED_HOURS,
 ) -> dict[str, Any]:
-    return {
+    resource = {
         "id": resource_id_for_paper(paper),
         "title": paper.title,
         "author": paper.authors,
@@ -104,6 +104,14 @@ def paper_to_resource(
             "review_status": "pending",
         },
     }
+    context = {}
+    if mapping.stage:
+        context["stage"] = mapping.stage
+    if mapping.role:
+        context["role"] = mapping.role
+    if context:
+        resource["curriculum_context"] = context
+    return resource
 
 
 def resource_id_for_paper(paper: Paper) -> str:

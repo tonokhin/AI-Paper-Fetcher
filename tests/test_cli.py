@@ -495,6 +495,7 @@ papers:
             pages = [
                 [sample_paper_with_id("new-1")],
                 [sample_paper_with_id("new-2")],
+                [sample_paper_with_id("new-3")],
             ]
             with (
                 patch("ai_paper_fetcher.workflows.search_papers", side_effect=pages) as search,
@@ -522,9 +523,9 @@ papers:
             papers = load_papers(data_dir / "reading_list.csv")
 
         self.assertEqual(exit_code, 0)
-        self.assertEqual(search.call_count, 2)
+        self.assertEqual(search.call_count, 3)
         self.assertEqual(search.call_args_list[0].kwargs["max_results"], 3)
-        self.assertEqual(len(papers), 2)
+        self.assertEqual(len(papers), 3)
         citations.assert_not_called()
         self.assertEqual(list(papers_dir.glob("**/*.pdf")), [])
 

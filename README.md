@@ -265,6 +265,9 @@ resources:
     url: "https://arxiv.org/abs/1706.03762"
     covers:
       - transformers-and-llms
+    curriculum_context:
+      stage: graduate
+      role: research
     provenance:
       source: ai-paper-fetcher
       review_status: pending
@@ -272,7 +275,10 @@ resources:
 
 Downstream curriculum tools can then decide how to display those papers, for
 example as a postgraduate research layer, a "ready now" shelf, or a later list
-gated by missing prerequisites.
+gated by missing prerequisites. The optional `curriculum_context` preserves the
+mapping's `stage` and `role` without requiring downstream tools to use them.
+Consumers that do not recognize this field can ignore it; the resource's core
+fields and file-based export remain unchanged.
 
 By default, export fails if a paper's topic is not present in the mapping. Use
 `--skip-unmapped` when exporting an ad hoc reading list and you only want mapped
