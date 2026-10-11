@@ -103,6 +103,28 @@ topics:
       - cs.CL
       - cs.AI
 
+  single_cell_foundation_models:
+    query: "single-cell foundation model"
+    include_keywords:
+      - single-cell foundation model
+      - single cell foundation model
+      - transcriptomics foundation model
+      - geneformer
+      - scgpt
+      - scfoundation
+      - cellplm
+      - universal cell embeddings
+    exclude_keywords:
+      - survey
+      - review
+      - tutorial
+      - position paper
+    categories:
+      - q-bio.GN
+      - q-bio.QM
+      - cs.LG
+      - stat.ML
+
   llm_evaluation:
     query: "LLM evaluation"
     include_keywords:

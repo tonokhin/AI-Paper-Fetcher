@@ -152,6 +152,14 @@ Search for doctoral human-AI interaction research:
   --max-results 5 --new-results --max-pages 5 --no-download --no-citations
 ```
 
+Search on demand for single-cell foundation-model research (this topic is
+intentionally excluded from the scheduled AI track):
+
+```bash
+.venv/bin/ai-paper-fetcher fetch --config-topic single_cell_foundation_models \
+  --max-results 10 --new-results --max-pages 5 --no-download --no-citations
+```
+
 Run weekly without slow network enrichments:
 
 ```bash
@@ -228,6 +236,10 @@ Topics can be grouped into tracks so broad streams do not fight each other in fe
 
 - `ai`: LLM evaluation, agents, interpretability, RAG/grounding, multimodal reasoning, training/alignment, AI security, adaptive data analysis, benchmark contamination, synthetic-data feedback, and human-AI interaction.
 - `fundamentals`: algorithms and mathematics for AI.
+
+The `single_cell_foundation_models` topic is configured for targeted searches
+but is not included in either scheduled track, so it does not increase routine
+fetch work unless explicitly selected.
 
 Track-aware commands:
 

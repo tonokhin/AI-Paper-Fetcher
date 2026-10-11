@@ -50,6 +50,18 @@ class ConfigTests(unittest.TestCase):
         self.assertIn("cs.HC", topic.categories)
         self.assertIn("human_ai_interaction", tracks["ai"].topics)
 
+    def test_single_cell_foundation_models_is_an_opt_in_topic(self):
+        root = Path(__file__).resolve().parents[1]
+        topics = load_topics(root / "config.yaml")
+        tracks = load_tracks(root / "config.yaml")
+
+        topic = topics["single_cell_foundation_models"]
+        self.assertEqual(topic.query, "single-cell foundation model")
+        self.assertIn("scgpt", topic.include_keywords)
+        self.assertIn("q-bio.GN", topic.categories)
+        self.assertNotIn("single_cell_foundation_models", tracks["ai"].topics)
+        self.assertNotIn("single_cell_foundation_models", tracks["fundamentals"].topics)
+
     def test_load_topics(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             config_path = Path(temp_dir) / "config.yaml"
