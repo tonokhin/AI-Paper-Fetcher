@@ -9,6 +9,7 @@ tracks:
       - llm_training_and_alignment
       - ai_security
       - adaptive_data_analysis
+      - llm_benchmark_contamination
 
   fundamentals:
     topics:
@@ -36,6 +37,27 @@ topics:
       - cs.LG
       - stat.ML
       - cs.AI
+
+  llm_benchmark_contamination:
+    query: contamination
+    include_keywords:
+      - benchmark contamination
+      - data contamination
+      - evaluation data contamination
+      - test set contamination
+      - training data overlap
+      - benchmark leakage
+    exclude_keywords:
+      - survey
+      - review
+      - tutorial
+      - position paper
+    categories:
+      - cs.CL
+      - cs.LG
+      - cs.AI
+      - cs.CR
+      - stat.ME
 
   llm_evaluation:
     query: "LLM evaluation"

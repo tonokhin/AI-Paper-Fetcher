@@ -17,6 +17,17 @@ class ConfigTests(unittest.TestCase):
         self.assertIn("stat.ML", topic.categories)
         self.assertIn("adaptive_data_analysis", tracks["ai"].topics)
 
+    def test_llm_benchmark_contamination_topic_is_in_ai_track(self):
+        root = Path(__file__).resolve().parents[1]
+        topics = load_topics(root / "config.yaml")
+        tracks = load_tracks(root / "config.yaml")
+
+        topic = topics["llm_benchmark_contamination"]
+        self.assertEqual(topic.query, "contamination")
+        self.assertIn("evaluation data contamination", topic.include_keywords)
+        self.assertIn("cs.CR", topic.categories)
+        self.assertIn("llm_benchmark_contamination", tracks["ai"].topics)
+
     def test_load_topics(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             config_path = Path(temp_dir) / "config.yaml"

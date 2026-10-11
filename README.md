@@ -131,6 +131,13 @@ Keep paging until enough new papers are found:
 .venv/bin/ai-paper-fetcher fetch --config-topic llm_evaluation --max-results 10 --new-results --max-pages 5
 ```
 
+Search for benchmark-contamination research across the AI track:
+
+```bash
+.venv/bin/ai-paper-fetcher fetch --config-topic llm_benchmark_contamination \
+  --max-results 5 --new-results --max-pages 5 --no-download --no-citations
+```
+
 Run weekly without slow network enrichments:
 
 ```bash
