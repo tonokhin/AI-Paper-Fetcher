@@ -145,6 +145,13 @@ Search for research on recursive synthetic-data feedback:
   --max-results 5 --new-results --max-pages 5 --no-download --no-citations
 ```
 
+Search for doctoral human-AI interaction research:
+
+```bash
+.venv/bin/ai-paper-fetcher fetch --config-topic human_ai_interaction \
+  --max-results 5 --new-results --max-pages 5 --no-download --no-citations
+```
+
 Run weekly without slow network enrichments:
 
 ```bash
