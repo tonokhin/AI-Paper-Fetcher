@@ -138,6 +138,13 @@ Search for benchmark-contamination research across the AI track:
   --max-results 5 --new-results --max-pages 5 --no-download --no-citations
 ```
 
+Search for research on recursive synthetic-data feedback:
+
+```bash
+.venv/bin/ai-paper-fetcher fetch --config-topic synthetic_data_feedback \
+  --max-results 5 --new-results --max-pages 5 --no-download --no-citations
+```
+
 Run weekly without slow network enrichments:
 
 ```bash

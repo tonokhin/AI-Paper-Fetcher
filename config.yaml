@@ -10,6 +10,7 @@ tracks:
       - ai_security
       - adaptive_data_analysis
       - llm_benchmark_contamination
+      - synthetic_data_feedback
 
   fundamentals:
     topics:
@@ -58,6 +59,27 @@ topics:
       - cs.AI
       - cs.CR
       - stat.ME
+
+  synthetic_data_feedback:
+    query: "model collapse"
+    include_keywords:
+      - recursively generated data
+      - recursive training
+      - self-consuming generative models
+      - synthetic data
+      - synthetic data feedback
+      - machine-generated text
+      - iterative fine-tuning collapse
+    exclude_keywords:
+      - survey
+      - review
+      - tutorial
+      - position paper
+    categories:
+      - cs.LG
+      - cs.CL
+      - cs.CV
+      - stat.ML
 
   llm_evaluation:
     query: "LLM evaluation"
