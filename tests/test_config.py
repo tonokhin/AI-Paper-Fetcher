@@ -6,6 +6,17 @@ from ai_paper_fetcher.config import load_foundational_papers, load_topics, load_
 
 
 class ConfigTests(unittest.TestCase):
+    def test_adaptive_data_analysis_topic_is_in_ai_track(self):
+        root = Path(__file__).resolve().parents[1]
+        topics = load_topics(root / "config.yaml")
+        tracks = load_tracks(root / "config.yaml")
+
+        topic = topics["adaptive_data_analysis"]
+        self.assertEqual(topic.query, "holdout")
+        self.assertIn("reusable holdout", topic.include_keywords)
+        self.assertIn("stat.ML", topic.categories)
+        self.assertIn("adaptive_data_analysis", tracks["ai"].topics)
+
     def test_load_topics(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             config_path = Path(temp_dir) / "config.yaml"

@@ -205,7 +205,7 @@ Research topics live in [config.yaml](config.yaml).
 
 Topics can be grouped into tracks so broad streams do not fight each other in fetches and recommendations. The default config includes:
 
-- `ai`: LLM evaluation, agents, interpretability, RAG/grounding, multimodal reasoning, training/alignment, and AI security.
+- `ai`: LLM evaluation, agents, interpretability, RAG/grounding, multimodal reasoning, training/alignment, AI security, and adaptive data analysis.
 - `fundamentals`: algorithms and mathematics for AI.
 
 Track-aware commands:

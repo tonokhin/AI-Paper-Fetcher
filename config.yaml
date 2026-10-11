@@ -8,6 +8,7 @@ tracks:
       - multimodal_reasoning
       - llm_training_and_alignment
       - ai_security
+      - adaptive_data_analysis
 
   fundamentals:
     topics:
@@ -15,6 +16,27 @@ tracks:
       - mathematics_for_ai
 
 topics:
+  adaptive_data_analysis:
+    query: "holdout"
+    include_keywords:
+      - adaptive data analysis
+      - adaptive holdout
+      - reusable holdout
+      - test-set reuse
+      - test set reuse
+      - leaderboard overfitting
+      - leaderboard
+      - selection bias
+    exclude_keywords:
+      - survey
+      - review
+      - tutorial
+      - position paper
+    categories:
+      - cs.LG
+      - stat.ML
+      - cs.AI
+
   llm_evaluation:
     query: "LLM evaluation"
     include_keywords:
