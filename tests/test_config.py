@@ -39,6 +39,17 @@ class ConfigTests(unittest.TestCase):
         self.assertIn("cs.CL", topic.categories)
         self.assertIn("synthetic_data_feedback", tracks["ai"].topics)
 
+    def test_human_ai_interaction_topic_is_in_ai_track(self):
+        root = Path(__file__).resolve().parents[1]
+        topics = load_topics(root / "config.yaml")
+        tracks = load_tracks(root / "config.yaml")
+
+        topic = topics["human_ai_interaction"]
+        self.assertEqual(topic.query, "human-AI interaction")
+        self.assertIn("human-LLM interaction", topic.include_keywords)
+        self.assertIn("cs.HC", topic.categories)
+        self.assertIn("human_ai_interaction", tracks["ai"].topics)
+
     def test_load_topics(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             config_path = Path(temp_dir) / "config.yaml"

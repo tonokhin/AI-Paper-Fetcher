@@ -11,6 +11,7 @@ tracks:
       - adaptive_data_analysis
       - llm_benchmark_contamination
       - synthetic_data_feedback
+      - human_ai_interaction
 
   fundamentals:
     topics:
@@ -80,6 +81,27 @@ topics:
       - cs.CL
       - cs.CV
       - stat.ML
+
+  human_ai_interaction:
+    query: "human-AI interaction"
+    include_keywords:
+      - human-AI interaction
+      - human AI interaction
+      - human-LLM interaction
+      - human language model interaction
+      - human-AI collaboration
+      - human-AI teaming
+      - human-centered AI
+      - AI-assisted decision making
+    exclude_keywords:
+      - survey
+      - review
+      - tutorial
+      - position paper
+    categories:
+      - cs.HC
+      - cs.CL
+      - cs.AI
 
   llm_evaluation:
     query: "LLM evaluation"
